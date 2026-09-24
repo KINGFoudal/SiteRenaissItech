@@ -491,6 +491,21 @@ ul { margin: 0; padding: 0; list-style: none; }
 .about-card p { margin-top: 10px; font-size: 14px; color: var(--muted); }
 .about-card .service-icon { width: 36px; height: 36px; }
 
+/* ---------- Pied de page ---------- */
+.site-footer { margin-top: 40px; padding: 56px 0 28px; background: var(--black); color: var(--text-light); }
+.home .site-footer { margin-top: 0; border-top: 1px solid rgba(255, 255, 255, .07); }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 40px; }
+.footer-grid h2 { margin-bottom: 14px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
+.footer-grid nav, .footer-grid > div:last-child { display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--muted-light); }
+.footer-grid a:hover { color: var(--orange); }
+.footer-brand p { margin: 16px 0 20px; max-width: 300px; font-size: 14px; color: var(--muted-light); }
+.footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 44px; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .08); font-size: 13px; color: var(--muted-light); }
+.footer-bottom a:hover { color: var(--orange); }
+.form-note { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+.form-note a { color: var(--text); text-decoration: underline; }
+.legal { max-width: 780px; margin-top: 32px; font-size: 16px; }
+.legal h2 { font-size: 20px; }
+
 /* ---------- Toast ---------- */
 .toast { position: fixed; left: 50%; bottom: 28px; z-index: 60; transform: translate(-50%, 20px); opacity: 0; padding: 12px 20px; border-radius: 8px; background: var(--black); color: #fff; font-size: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); transition: opacity .25s, transform .25s var(--ease); pointer-events: none; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -525,6 +540,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   .posts { grid-template-columns: repeat(2, 1fr); }
   .about-grid { grid-template-columns: 1fr 1fr; }
   .trust { grid-template-columns: repeat(2, 1fr); }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
 
   .app { grid-template-columns: 1fr; }
   .sidebar { position: fixed; left: 0; top: 0; z-index: 70; width: 260px; transform: translateX(-100%); transition: transform .3s var(--ease); }
@@ -555,6 +571,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   .kpi { padding: 16px; }
   .msg { max-width: 92%; }
   .whatsapp { right: 16px; bottom: 16px; }
+  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
 }
 
 @media (max-width: 1080px) {

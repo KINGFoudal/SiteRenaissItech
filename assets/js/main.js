@@ -13,6 +13,8 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
   };
 
+  $$('[data-year]').forEach((el) => { el.textContent = new Date().getFullYear(); });
+
   /* ---------- Menu mobile ---------- */
   const burger = $('[data-burger]');
   const nav = $('#nav');
