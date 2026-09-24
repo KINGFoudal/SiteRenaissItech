@@ -47,22 +47,6 @@
     });
   });
 
-  /* ---------- Panier ---------- */
-  const countEl = $('[data-cart-count]');
-  const renderCart = () => { if (countEl) countEl.textContent = store.get('rit-cart', []).length; };
-  renderCart();
-  $$('[data-add-cart]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const cart = store.get('rit-cart', []);
-      cart.push(btn.dataset.addCart);
-      store.set('rit-cart', cart);
-      renderCart();
-      btn.classList.add('is-added');
-      setTimeout(() => btn.classList.remove('is-added'), 900);
-      toast(`« ${btn.dataset.addCart} » ajouté au panier`);
-    });
-  });
-
   /* ---------- Prise de rendez-vous ---------- */
   const booking = $('[data-booking]');
   if (booking) {
@@ -218,6 +202,12 @@
   /* ---------- Formulaire de contact ---------- */
   const contact = $('[data-contact-form]');
   if (contact) {
+    // Pré-remplissage depuis la boutique : contact.html?produit=...
+    const produit = new URLSearchParams(location.search).get('produit');
+    if (produit) {
+      contact.elements.sujet.value = 'Demande sur un produit';
+      contact.elements.message.value = `Bonjour, je suis intéressé(e) par « ${produit} ». Pouvez-vous m’envoyer un devis ?`;
+    }
     contact.addEventListener('submit', (e) => {
       e.preventDefault();
       const msg = $('[data-form-msg]', contact);

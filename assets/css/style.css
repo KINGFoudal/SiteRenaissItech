@@ -85,9 +85,6 @@ ul { margin: 0; padding: 0; list-style: none; }
 .nav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--orange); border-radius: 2px; }
 .header-actions { display: flex; align-items: center; gap: 12px; }
 
-.cart-btn { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: none; }
-.cart-btn svg { width: 24px; height: 24px; }
-.cart-count { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--orange); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
 
 .burger { display: none; width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 6px; background: transparent; place-items: center; }
 .burger svg { width: 20px; height: 20px; }
@@ -282,9 +279,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .product-body { display: flex; flex-direction: column; flex: 1; padding: 18px; }
 .product-body h3 { font-size: 15px; font-weight: 600; }
 .product-body p { margin-top: 8px; font-size: 13.5px; color: var(--muted); flex: 1; }
-.price { margin-top: 14px; font-size: 18px; font-weight: 700; }
-.product .btn { margin-top: 14px; }
-.product .btn.is-added { background: var(--black); }
+.product-ctas { display: grid; gap: 8px; margin-top: 16px; }
 .trust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--border); }
 .trust div { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 500; }
 .trust svg { width: 20px; height: 20px; color: var(--orange); flex-shrink: 0; }
