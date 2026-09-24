@@ -174,11 +174,11 @@ const SOCIAL = {
   whatsapp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .3-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.6.3 0 .2 0 .8-.2 1.3Z"/></svg>',
 };
 
-const NAV = [['/index.html', 'Accueil'], ['/services.html', 'Services'], ['/formations.html', 'Formations'], ['/boutique.html', 'Boutique'], ['/blog.html', 'Blog'], ['/a-propos.html', 'À propos']];
+const NAV = [['/', 'Accueil'], ['/services', 'Services'], ['/formations', 'Formations'], ['/boutique', 'Boutique'], ['/blog', 'Blog'], ['/a-propos', 'À propos']];
 
 const header = () => `<header class="site-header">
     <div class="container">
-      <a class="logo" href="/index.html" aria-label="Renaissance iTech — accueil">
+      <a class="logo" href="/" aria-label="Renaissance iTech — accueil">
         <img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34">
         <span class="logo-text">Renaissance<span>iTech</span></span>
       </a>
@@ -186,8 +186,8 @@ const header = () => `<header class="site-header">
         ${NAV.map(([h, l]) => `<a href="${h}"${l === 'Blog' ? ' aria-current="page"' : ''}>${l}</a>`).join('\n        ')}
       </nav>
       <div class="header-actions">
-        <a class="btn btn-outline btn-sm" href="/espace-client.html">Se connecter</a>
-        <a class="btn btn-primary btn-sm" href="/rendez-vous.html">Prendre rendez-vous</a>
+        <a class="btn btn-outline btn-sm" href="/espace-client">Se connecter</a>
+        <a class="btn btn-primary btn-sm" href="/rendez-vous">Prendre rendez-vous</a>
         <button class="burger" type="button" aria-label="Ouvrir le menu" aria-controls="nav" aria-expanded="false" data-burger>${I.menu}</button>
       </div>
     </div>
@@ -206,10 +206,13 @@ const newsletter = (source) => `<section class="newsletter" aria-labelledby="nl-
         <button class="btn btn-primary" type="submit">S’abonner</button>
       </div>
       <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <label class="consent"><input type="checkbox" name="consent" required><span>J’accepte de recevoir la newsletter de Renaissance iTech. Mes données ne sont jamais revendues et je peux me désinscrire à tout moment (<a href="/mentions-legales.html#confidentialite">confidentialité</a>).</span></label>
+      <label class="consent"><input type="checkbox" name="consent" required><span>J’accepte de recevoir la newsletter de Renaissance iTech. Mes données ne sont jamais revendues et je peux me désinscrire à tout moment (<a href="/mentions-legales#confidentialite">confidentialité</a>).</span></label>
       <p class="form-msg" data-nl-msg role="status" hidden></p>
     </form>
   </section>`;
+
+// Les réseaux sociaux n'affichent pas les images SVG : on utilise alors l'image de partage du site
+const socialImage = (image) => (!image || image.endsWith('.svg') ? '/assets/img/og-image.png' : image);
 
 const page = ({ title, desc, canonical, head = '', body, type = 'website', image }) => `<!doctype html>
 <html lang="fr">
@@ -226,10 +229,14 @@ const page = ({ title, desc, canonical, head = '', body, type = 'website', image
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(desc)}">
   <meta property="og:url" content="${canonical}">
-  ${image ? `<meta property="og:image" content="${SITE}${esc(image)}">\n  <meta name="twitter:card" content="summary_large_image">` : '<meta name="twitter:card" content="summary">'}
+  <meta property="og:image" content="${SITE}${esc(socialImage(image))}">
+  <meta name="twitter:card" content="summary_large_image">
   ${head}
   <link rel="alternate" type="application/rss+xml" title="Blog Renaissance iTech" href="/rss.xml">
   <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -241,35 +248,35 @@ const page = ({ title, desc, canonical, head = '', body, type = 'website', image
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="logo" href="/index.html" aria-label="Renaissance iTech — accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+          <a class="logo" href="/" aria-label="Renaissance iTech — accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
           <p>Agence digitale &amp; IA : sites web, automatisation, cybersécurité et formations pour faire grandir votre entreprise.</p>
-          <a class="btn btn-primary btn-sm" href="/rendez-vous.html">Prendre rendez-vous</a>
+          <a class="btn btn-primary btn-sm" href="/rendez-vous">Prendre rendez-vous</a>
         </div>
         <nav aria-label="Services">
           <h2>Services</h2>
-          <a href="/services.html">Création de sites web</a>
-          <a href="/services.html">Automatisation IA</a>
-          <a href="/services.html">Cybersécurité</a>
-          <a href="/services.html">SEO &amp; Référencement</a>
+          <a href="/services">Création de sites web</a>
+          <a href="/services">Automatisation IA</a>
+          <a href="/services">Cybersécurité</a>
+          <a href="/services">SEO &amp; Référencement</a>
         </nav>
         <nav aria-label="Ressources">
           <h2>Ressources</h2>
-          <a href="/blog.html">Blog</a>
-          <a href="/formations.html">Formations</a>
-          <a href="/boutique.html">Boutique</a>
-          <a href="/a-propos.html">À propos</a>
+          <a href="/blog">Blog</a>
+          <a href="/formations">Formations</a>
+          <a href="/boutique">Boutique</a>
+          <a href="/a-propos">À propos</a>
         </nav>
         <div>
           <h2>Contact</h2>
           <a href="mailto:contact@renaissance-itech.com">contact@renaissance-itech.com</a>
-          <a href="tel:+2250789432165">+225 07 89 43 21 65</a>
+          <a href="tel:+33775700867">+33 7 75 70 08 67</a>
           <span>Lun - Ven : 9h - 18h</span>
-          <a href="/contact.html">Formulaire de contact →</a>
+          <a href="/contact">Formulaire de contact →</a>
         </div>
       </div>
       <div class="footer-bottom">
         <span>© <span data-year>2026</span> Renaissance iTech. Tous droits réservés.</span>
-        <span><a href="/mentions-legales.html">Mentions légales</a> · <a href="/mentions-legales.html#confidentialite">Confidentialité</a> · <a href="/rss.xml">RSS</a></span>
+        <span><a href="/mentions-legales">Mentions légales</a> · <a href="/mentions-legales#confidentialite">Confidentialité</a> · <a href="/rss.xml">RSS</a></span>
       </div>
     </div>
   </footer>
@@ -340,10 +347,10 @@ function listingPage(articles) {
   return page({
     title: 'Blog — Conseils, actualités et tendances digitales | Renaissance iTech',
     desc: 'Conseils, actualités et tendances : IA, développement web, entrepreneuriat, cybersécurité et design par l’équipe Renaissance iTech.',
-    canonical: `${SITE}/blog.html`,
+    canonical: `${SITE}/blog`,
     body,
     head: `<script type="application/ld+json">${JSON.stringify({
-      '@context': 'https://schema.org', '@type': 'Blog', name: 'Blog Renaissance iTech', url: `${SITE}/blog.html`,
+      '@context': 'https://schema.org', '@type': 'Blog', name: 'Blog Renaissance iTech', url: `${SITE}/blog`,
       blogPost: articles.map((a) => ({ '@type': 'BlogPosting', headline: a.title, url: `${SITE}/blog/${a.slug}/`, datePublished: isoDate(a.date) })),
     })}</script>`,
   });
@@ -365,7 +372,7 @@ function articlePage(a, articles) {
       '@type': 'BlogPosting',
       headline: a.title,
       description: a.description,
-      image: `${SITE}${a.image}`,
+      image: `${SITE}${socialImage(a.image)}`,
       datePublished: isoDate(a.date),
       dateModified: isoDate(a.updated || a.date),
       author: { '@type': 'Organization', name: a.author, url: SITE },
@@ -382,7 +389,7 @@ function articlePage(a, articles) {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Accueil', item: `${SITE}/` },
-        { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog.html` },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog` },
         { '@type': 'ListItem', position: 3, name: a.title, item: url },
       ],
     },
@@ -392,7 +399,7 @@ function articlePage(a, articles) {
   ${header()}
   <main class="page article-page">
     <div class="container">
-      <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="/index.html">Accueil</a><span>/</span><a href="/blog.html">Blog</a><span>/</span><span aria-current="page">${esc(a.category)}</span></nav>
+      <nav class="breadcrumb" aria-label="Fil d’Ariane"><a href="/">Accueil</a><span>/</span><a href="/blog">Blog</a><span>/</span><span aria-current="page">${esc(a.category)}</span></nav>
       <header class="article-head">
         <span class="badge">${esc(a.category)}</span>
         <h1>${esc(a.title)}</h1>
@@ -440,8 +447,8 @@ function articlePage(a, articles) {
           <div class="card cta-card">
             <h2>${ctaTitle}</h2>
             <p>${ctaText}</p>
-            <a class="btn btn-primary btn-block" href="/contact.html">Demander un devis</a>
-            <a class="btn btn-outline btn-block" href="/rendez-vous.html">Prendre rendez-vous</a>
+            <a class="btn btn-primary btn-block" href="/contact">Demander un devis</a>
+            <a class="btn btn-outline btn-block" href="/rendez-vous">Prendre rendez-vous</a>
           </div>
         </aside>
       </div>
@@ -484,7 +491,7 @@ function rss(articles) {
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Blog Renaissance iTech</title>
-    <link>${SITE}/blog.html</link>
+    <link>${SITE}/blog</link>
     <atom:link href="${SITE}/rss.xml" rel="self" type="application/rss+xml"/>
     <description>Conseils, actualités et tendances : IA, développement web, cybersécurité et entrepreneuriat.</description>
     <language>fr-FR</language>
@@ -496,7 +503,7 @@ ${items}
 
 function sitemap(articles) {
   const urls = [
-    ...PAGES.map((p) => ({ loc: p === 'index.html' ? `${SITE}/` : `${SITE}/${p}` })),
+    ...PAGES.map((p) => ({ loc: p === 'index.html' ? `${SITE}/` : `${SITE}/${p.replace(/\.html$/, '')}` })),
     ...articles.map((a) => ({ loc: `${SITE}/blog/${a.slug}/`, lastmod: isoDate(a.updated || a.date) })),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>

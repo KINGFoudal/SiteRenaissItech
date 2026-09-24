@@ -17,8 +17,10 @@ Site statique de Renaissance iTech (HTML/CSS/JS, sans dépendance), fidèle à l
 
 Styles : `assets/css/style.css` · Scripts : `assets/js/main.js` · Visuels : `assets/img/`
 
-Aperçu local : `npm install && npm run build && npm run dev`
+Aperçu local : `npm install && npm run build && npm run dev` (pages seules) ou `npx wrangler dev` (pages + formulaires)
+
+- **Checklist de validation** : [CHECKLIST-VALIDATION.md](CHECKLIST-VALIDATION.md)
 
 - **Publier un article** : voir [PUBLIER-UN-ARTICLE.md](PUBLIER-UN-ARTICLE.md) (articles dans `content/blog/`, générés par `scripts/build-blog.mjs`)
-- **Newsletter** : voir [NEWSLETTER.md](NEWSLETTER.md) (Worker `worker/index.js` + Brevo)
-- **Déploiement Cloudflare** : `wrangler.jsonc` (fichiers statiques + `/api/newsletter`)
+- **Formulaires, emails et newsletter** : voir [NEWSLETTER.md](NEWSLETTER.md) (Worker `worker/index.js`, base D1 `migrations/`, Brevo)
+- **Déploiement Cloudflare** : `wrangler.jsonc` (fichiers statiques + API `/api/contact`, `/api/creneaux`, `/api/rendez-vous`, `/api/newsletter`)

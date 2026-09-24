@@ -199,6 +199,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 .slot-list { display: grid; gap: 8px; }
 .slot { height: 36px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 13px; transition: border-color .2s, background .2s; }
 .slot:hover { border-color: var(--orange); }
+.slot:disabled { color: #C4C4C4; background: var(--bg-soft); text-decoration: line-through; cursor: not-allowed; border-color: var(--border); }
+.slots h4 .tz { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+.slots-full { margin-bottom: 10px; font-size: 13px; color: var(--muted); }
 .slot.is-selected { background: var(--orange-soft); border-color: #FFC9A8; color: var(--orange-dark); font-weight: 600; }
 .booking-actions { display: flex; gap: 12px; margin-top: 28px; }
 .booking-actions .btn { flex: 1; }
@@ -266,6 +269,17 @@ ul { margin: 0; padding: 0; list-style: none; }
 .table-wrap { overflow-x: auto; }
 .progress { height: 6px; border-radius: 3px; background: #EEE; overflow: hidden; }
 .progress > i { display: block; height: 100%; background: var(--orange); border-radius: 3px; }
+
+/* Espace client : connexion */
+.login-screen { min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; background: var(--black); background-image: radial-gradient(ellipse 50% 50% at 50% 0%, rgba(255, 107, 26, .22), transparent 70%); }
+.login-screen[hidden], .app[hidden] { display: none; }
+.login-card { width: 100%; max-width: 420px; padding: 36px 32px; }
+.login-card h1 { margin-top: 26px; font-size: 26px; font-weight: 700; }
+.login-card > p { margin: 10px 0 24px; font-size: 14px; color: var(--muted); }
+.login-links { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13.5px; }
+.login-links a:not(.link-arrow) { color: var(--muted); }
+.login-links a:not(.link-arrow):hover { color: var(--orange); }
+.demo-badge { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--orange-soft); color: var(--orange-dark); font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; vertical-align: middle; }
 
 /* ---------- 5. Boutique ---------- */
 .products { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
@@ -571,6 +585,10 @@ ul { margin: 0; padding: 0; list-style: none; }
   .kpi { padding: 16px; }
   .msg { max-width: 92%; }
   .whatsapp { right: 16px; bottom: 16px; }
+  .app-top h1 { font-size: 20px; }
+  .app-top > div:first-child { flex-wrap: wrap; min-width: 0; gap: 6px 10px !important; }
+  .app-top-actions { gap: 8px; }
+  .app-top-actions .avatar { width: 34px; height: 34px; }
   .footer-grid { grid-template-columns: 1fr; gap: 28px; }
 }
 

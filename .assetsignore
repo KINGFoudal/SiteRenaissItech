@@ -13,3 +13,6 @@ package-lock.json
 README.md
 PUBLIER-UN-ARTICLE.md
 NEWSLETTER.md
+migrations
+.wrangler
+CHECKLIST-VALIDATION.md

@@ -108,6 +108,23 @@
     try { await navigator.clipboard.writeText(btn.dataset.copyLink); toast('Lien copié'); } catch { toast(btn.dataset.copyLink); }
   }));
 
+  /* ---------- Appels à l'API du site ---------- */
+  const api = async (path, body) => {
+    const res = await fetch(path, body ? {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    } : undefined);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'Une erreur est survenue. Réessayez dans un instant.');
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  };
+  const netError = (err) => (err instanceof TypeError ? 'Connexion impossible. Vérifiez votre connexion et réessayez.' : err.message);
+
   /* ---------- Prise de rendez-vous ---------- */
   const booking = $('[data-booking]');
   if (booking) {
@@ -118,8 +135,11 @@
     const grid = $('[data-cal-grid]', booking);
     const title = $('[data-cal-title]', booking);
     const prevBtn = $('[data-cal-prev]', booking);
+    const slots = $$('.slot', booking);
+    const slotsInfo = $('[data-slots-info]', booking);
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-    // Premier jour ouvré disponible, sélectionné par défaut
+    // Premier jour ouvré, sélectionné par défaut
     const firstOpen = new Date(today);
     while ([0, 6].includes(firstOpen.getDay())) firstOpen.setDate(firstOpen.getDate() + 1);
     state.date = firstOpen;
@@ -139,25 +159,52 @@
         const dt = new Date(y, m, d);
         const closed = dt < today || [0, 6].includes(dt.getDay());
         const cls = ['cal-day', sameDay(dt, today) && 'is-today', sameDay(dt, state.date) && 'is-selected'].filter(Boolean).join(' ');
-        html += `<button type="button" class="${cls}" data-day="${d}"${closed ? ' disabled' : ''} aria-label="${d} ${MONTHS[m]} ${y}">${d}</button>`;
+        html += `<button type="button" class="${cls}" data-day="${d}"${closed ? ' disabled' : ''} aria-label="${d} ${MONTHS[m]} ${y}"${sameDay(dt, state.date) ? ' aria-pressed="true"' : ''}>${d}</button>`;
       }
       grid.innerHTML = html;
     };
+
+    const pickSlot = (s) => {
+      state.slot = s ? s.textContent : null;
+      slots.forEach((x) => { x.classList.toggle('is-selected', x === s); x.setAttribute('aria-pressed', String(x === s)); });
+    };
+    // Grise les créneaux déjà réservés (ou passés) pour la date choisie
+    let slotsReq = 0;
+    const loadSlots = async () => {
+      const req = ++slotsReq;
+      slots.forEach((s) => { s.disabled = true; });
+      let pris = [];
+      try { pris = (await api(`/api/creneaux?date=${ymd(state.date)}`)).pris || []; } catch { /* API indisponible : tous les créneaux restent proposés */ }
+      if (req !== slotsReq) return;
+      slots.forEach((s) => { s.disabled = pris.includes(s.textContent); });
+      const free = slots.filter((s) => !s.disabled);
+      if (!free.some((s) => s.textContent === state.slot)) pickSlot(free[0] || null);
+      if (slotsInfo) slotsInfo.hidden = free.length > 0;
+      return free.length;
+    };
+    // À l'ouverture : si le jour proposé est complet (ou déjà passé), on avance au prochain jour disponible
+    const openFirstFreeDay = async () => {
+      for (let i = 0; i < 15 && !(await loadSlots()); i++) {
+        const next = new Date(state.date);
+        do next.setDate(next.getDate() + 1); while ([0, 6].includes(next.getDay()));
+        state.date = next;
+        state.view = new Date(next.getFullYear(), next.getMonth(), 1);
+        renderCal();
+      }
+    };
+
     grid.addEventListener('click', (e) => {
       const b = e.target.closest('[data-day]');
       if (!b || b.disabled) return;
       state.date = new Date(state.view.getFullYear(), state.view.getMonth(), +b.dataset.day);
       renderCal();
+      loadSlots();
     });
     prevBtn.addEventListener('click', () => { state.view.setMonth(state.view.getMonth() - 1); renderCal(); });
     $('[data-cal-next]', booking).addEventListener('click', () => { state.view.setMonth(state.view.getMonth() + 1); renderCal(); });
+    slots.forEach((s) => s.addEventListener('click', () => { if (!s.disabled) pickSlot(s); }));
 
-    const slots = $$('.slot', booking);
-    const pickSlot = (s) => { state.slot = s.textContent; slots.forEach((x) => x.classList.toggle('is-selected', x === s)); };
-    slots.forEach((s) => s.addEventListener('click', () => pickSlot(s)));
-    pickSlot(slots.find((s) => s.textContent === '11:00') || slots[0]);
-
-    // Étape 1 (service) est intégrée à l'écran « Date & heure », comme sur la maquette
+    // L'étape 1 (service) est intégrée à l'écran « Date & heure », comme sur la maquette
     const show = (n) => {
       $$('[data-step]', booking).forEach((el) => { el.hidden = +el.dataset.step !== n; });
       $$('[data-step-ind]', booking).forEach((el) => {
@@ -165,46 +212,75 @@
         el.classList.toggle('is-done', k < n || (n === 4 && k === 4));
         el.classList.toggle('is-current', k === n && n !== 4);
       });
+      booking.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
     const fmtDate = (d) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     $('[data-next]', booking).addEventListener('click', () => {
-      if (!state.date || !state.slot) return toast('Choisissez une date et une heure.');
+      if (!state.date || !state.slot) return toast('Choisissez une date et un créneau disponible.');
       show(3);
     });
     $('[data-back]', booking).addEventListener('click', () => show(2));
-    $('[data-restart]', booking).addEventListener('click', () => { $('form', booking).reset(); show(2); });
-    $('form[data-step="3"]', booking).addEventListener('submit', (e) => {
+    $('[data-restart]', booking).addEventListener('click', () => { $('form', booking).reset(); show(2); loadSlots(); });
+
+    const form = $('form[data-step="3"]', booking);
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const f = e.currentTarget;
-      const err = $('[data-err]', f);
-      const nom = f.nom.value.trim(), email = f.email.value.trim();
-      if (!nom || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        err.textContent = 'Merci de renseigner votre nom et un email valide.';
-        err.hidden = false;
-        return;
-      }
+      const err = $('[data-err]', form);
+      const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+      const nom = form.nom.value.trim(), email = form.email.value.trim();
+      if (nom.length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('Merci de renseigner votre nom et un email valide.');
       err.hidden = true;
-      const recap = $('[data-recap]', booking);
-      recap.replaceChildren(...[
-        ['Service', $('[data-service]', booking).value],
-        ['Date', fmtDate(state.date)],
-        ['Heure', `${state.slot} (30 min)`],
-        ['Email', email],
-      ].map(([k, v]) => {
-        const row = document.createElement('div');
-        const label = document.createElement('span');
-        const value = document.createElement('strong');
-        label.textContent = k;
-        value.textContent = v;
-        row.append(label, value);
-        return row;
-      }));
-      show(4);
+      const service = $('[data-service]', booking).value;
+      const btn = $('button[type=submit]', form);
+      btn.disabled = true;
+      btn.textContent = 'Envoi…';
+      try {
+        const res = await api('/api/rendez-vous', {
+          service, date: ymd(state.date), heure: state.slot, nom, email,
+          telephone: form.tel.value.trim(), message: form.message.value.trim(), website: form.website.value,
+        });
+        $('[data-confirm-msg]', booking).textContent = res.message;
+        $('[data-recap]', booking).replaceChildren(...[
+          ['Service', service],
+          ['Date', fmtDate(state.date)],
+          ['Heure', `${state.slot} (heure de Paris, 30 min)`],
+          ['Email', email],
+        ].map(([k, v]) => {
+          const row = document.createElement('div');
+          const label = document.createElement('span');
+          const value = document.createElement('strong');
+          label.textContent = k;
+          value.textContent = v;
+          row.append(label, value);
+          return row;
+        }));
+        show(4);
+      } catch (ex) {
+        if (ex.status === 409) { show(2); loadSlots(); toast(ex.message); } else fail(netError(ex));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirmer →';
+      }
     });
 
     renderCal();
+    openFirstFreeDay();
     show(2);
+  }
+
+  /* ---------- Espace client : connexion, démonstration ---------- */
+  const loginScreen = $('[data-login]');
+  if (loginScreen) {
+    const demo = new URLSearchParams(location.search).has('demo');
+    loginScreen.hidden = demo;
+    $('[data-app]').hidden = !demo;
+    $('[data-login-form]').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const msg = $('[data-login-msg]');
+      msg.hidden = false;
+      msg.textContent = 'Identifiants non reconnus. Vos accès vous sont envoyés au lancement de votre projet. Besoin d’aide ? contact@renaissance-itech.com';
+    });
   }
 
   /* ---------- Espace client ---------- */
@@ -269,20 +345,28 @@
       contact.elements.sujet.value = 'Demande sur un produit';
       contact.elements.message.value = `Bonjour, je suis intéressé(e) par « ${produit} ». Pouvez-vous m’envoyer un devis ?`;
     }
-    contact.addEventListener('submit', (e) => {
+    contact.addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = $('[data-form-msg]', contact);
       const f = contact.elements;
-      const valid = f.nom.value.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.value.trim()) && f.sujet.value && f.message.value.trim();
-      msg.hidden = false;
-      if (!valid) {
-        msg.className = 'form-msg err';
-        msg.textContent = 'Merci de remplir tous les champs avec un email valide.';
-        return;
+      const say = (ok, text) => { msg.hidden = false; msg.className = `form-msg ${ok ? 'ok' : 'err'}`; msg.textContent = text; };
+      const valid = f.nom.value.trim().length >= 2 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.value.trim()) && f.sujet.value && f.message.value.trim().length >= 10;
+      if (!valid) return say(false, 'Merci de remplir tous les champs avec un email valide (message de 10 caractères minimum).');
+      const btn = $('button[type=submit]', contact);
+      btn.disabled = true;
+      btn.textContent = 'Envoi…';
+      try {
+        const res = await api('/api/contact', {
+          nom: f.nom.value.trim(), email: f.email.value.trim(), sujet: f.sujet.value, message: f.message.value.trim(), website: f.website.value,
+        });
+        say(true, res.message);
+        contact.reset();
+      } catch (ex) {
+        say(false, netError(ex));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer le message';
       }
-      msg.className = 'form-msg ok';
-      msg.textContent = 'Merci ! Votre message a bien été envoyé. Nous vous répondons sous 24h ouvrées.';
-      contact.reset();
     });
   }
 })();

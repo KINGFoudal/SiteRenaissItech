@@ -5,8 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prendre rendez-vous en visioconférence | Renaissance iTech</title>
   <meta name="description" content="Planifiez votre rendez-vous en quelques clics : choisissez un service, une date et une heure, et recevez votre lien Google Meet par email.">
+  <link rel="canonical" href="https://www.renaissance-itech.com/rendez-vous">
+  <meta property="og:site_name" content="Renaissance iTech">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Prendre rendez-vous en visioconférence | Renaissance iTech">
+  <meta property="og:description" content="Planifiez votre rendez-vous en quelques clics : choisissez un service, une date et une heure, et recevez votre lien Google Meet par email.">
+  <meta property="og:url" content="https://www.renaissance-itech.com/rendez-vous">
+  <meta property="og:image" content="https://www.renaissance-itech.com/assets/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#0A0A0A">
-  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,21 +29,21 @@
 <body>
   <header class="site-header">
     <div class="container">
-      <a class="logo" href="index.html" aria-label="Renaissance iTech — accueil">
+      <a class="logo" href="/" aria-label="Renaissance iTech — accueil">
         <img class="logo-mark" src="assets/img/logo-mark.svg" alt="" width="34" height="34">
         <span class="logo-text">Renaissance<span>iTech</span></span>
       </a>
       <nav class="nav" id="nav" aria-label="Navigation principale">
-        <a href="index.html">Accueil</a>
-        <a href="services.html">Services</a>
-        <a href="formations.html">Formations</a>
-        <a href="boutique.html">Boutique</a>
-        <a href="blog.html">Blog</a>
-        <a href="a-propos.html">À propos</a>
+        <a href="/">Accueil</a>
+        <a href="/services">Services</a>
+        <a href="/formations">Formations</a>
+        <a href="/boutique">Boutique</a>
+        <a href="/blog">Blog</a>
+        <a href="/a-propos">À propos</a>
       </nav>
       <div class="header-actions">
-        <a class="btn btn-outline btn-sm" href="espace-client.html">Se connecter</a>
-        <a class="btn btn-primary btn-sm" href="rendez-vous.html">Prendre rendez-vous</a>
+        <a class="btn btn-outline btn-sm" href="/espace-client">Se connecter</a>
+        <a class="btn btn-primary btn-sm" href="/rendez-vous">Prendre rendez-vous</a>
         <button class="burger" type="button" aria-label="Ouvrir le menu" aria-controls="nav" aria-expanded="false" data-burger><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       </div>
     </div>
@@ -76,7 +90,8 @@
               <div class="cal-grid" data-cal-grid></div>
             </div>
             <div class="slots">
-              <h4>Heures disponibles</h4>
+              <h4>Heures disponibles <small class="tz">(heure de Paris)</small></h4>
+              <p class="slots-full" data-slots-info hidden>Plus de créneau ce jour-là. Choisissez une autre date.</p>
               <div class="slot-list" data-slots>
                 <button class="slot" type="button">09:00</button><button class="slot" type="button">10:00</button><button class="slot" type="button">11:00</button><button class="slot" type="button">14:00</button><button class="slot" type="button">15:00</button>
               </div>
@@ -91,10 +106,12 @@
               <div><label class="field-label" for="rdv-nom">Nom complet</label><input class="input" id="rdv-nom" name="nom" placeholder="Votre nom" required autocomplete="name"></div>
               <div><label class="field-label" for="rdv-email">Email</label><input class="input" id="rdv-email" name="email" type="email" placeholder="Votre email" required autocomplete="email"></div>
             </div>
-            <div><label class="field-label" for="rdv-tel">Téléphone</label><input class="input" id="rdv-tel" name="tel" type="tel" placeholder="+225 ..." autocomplete="tel"></div>
+            <div><label class="field-label" for="rdv-tel">Téléphone</label><input class="input" id="rdv-tel" name="tel" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel"></div>
             <div><label class="field-label" for="rdv-msg">Votre besoin (facultatif)</label><textarea class="textarea" id="rdv-msg" name="message" placeholder="Décrivez brièvement votre projet..."></textarea></div>
           </div>
-          <p class="form-msg err" data-err hidden></p>
+          <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <p class="form-note">Vos données servent uniquement à organiser le rendez-vous. <a href="/mentions-legales#confidentialite">Confidentialité</a></p>
+          <p class="form-msg err" data-err role="alert" hidden></p>
           <div class="booking-actions">
             <button class="btn btn-outline" type="button" data-back>← Retour</button>
             <button class="btn btn-primary" type="submit">Confirmer →</button>
@@ -105,48 +122,49 @@
           <div class="confirm">
             <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
             <h3>Rendez-vous confirmé</h3>
-            <p>Un email avec votre lien Google Meet vient de vous être envoyé.</p>
+            <p data-confirm-msg>Un email de confirmation vient de vous être envoyé.</p>
+            <p>Le lien Google Meet vous est envoyé par email avant le rendez-vous.</p>
             <div class="recap" data-recap></div>
           </div>
           <div class="booking-actions"><button class="btn btn-outline" type="button" data-restart>Prendre un autre rendez-vous</button></div>
         </div>
       </div>
     </div>
-    <p class="container booking-note">Toutes les réunions sont automatiquement créées dans Google Calendar<br>et le lien Google Meet vous est envoyé par email.</p>
+    <p class="container booking-note">Vous recevez une confirmation par email avec une invitation pour votre agenda,<br>puis le lien Google Meet de la réunion.</p>
   </main>
   <footer class="site-footer">
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="logo" href="/index.html" aria-label="Renaissance iTech — accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+          <a class="logo" href="/" aria-label="Renaissance iTech — accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
           <p>Agence digitale &amp; IA : sites web, automatisation, cybersécurité et formations pour faire grandir votre entreprise.</p>
-          <a class="btn btn-primary btn-sm" href="/rendez-vous.html">Prendre rendez-vous</a>
+          <a class="btn btn-primary btn-sm" href="/rendez-vous">Prendre rendez-vous</a>
         </div>
         <nav aria-label="Services">
           <h2>Services</h2>
-          <a href="/services.html">Création de sites web</a>
-          <a href="/services.html">Automatisation IA</a>
-          <a href="/services.html">Cybersécurité</a>
-          <a href="/services.html">SEO &amp; Référencement</a>
+          <a href="/services">Création de sites web</a>
+          <a href="/services">Automatisation IA</a>
+          <a href="/services">Cybersécurité</a>
+          <a href="/services">SEO &amp; Référencement</a>
         </nav>
         <nav aria-label="Ressources">
           <h2>Ressources</h2>
-          <a href="/blog.html">Blog</a>
-          <a href="/formations.html">Formations</a>
-          <a href="/boutique.html">Boutique</a>
-          <a href="/a-propos.html">À propos</a>
+          <a href="/blog">Blog</a>
+          <a href="/formations">Formations</a>
+          <a href="/boutique">Boutique</a>
+          <a href="/a-propos">À propos</a>
         </nav>
         <div>
           <h2>Contact</h2>
           <a href="mailto:contact@renaissance-itech.com">contact@renaissance-itech.com</a>
-          <a href="tel:+2250789432165">+225 07 89 43 21 65</a>
+          <a href="tel:+33775700867">+33 7 75 70 08 67</a>
           <span>Lun - Ven : 9h - 18h</span>
-          <a href="/contact.html">Formulaire de contact →</a>
+          <a href="/contact">Formulaire de contact →</a>
         </div>
       </div>
       <div class="footer-bottom">
         <span>© <span data-year>2026</span> Renaissance iTech. Tous droits réservés.</span>
-        <span><a href="/mentions-legales.html">Mentions légales</a> · <a href="/mentions-legales.html#confidentialite">Confidentialité</a> · <a href="/rss.xml">RSS</a></span>
+        <span><a href="/mentions-legales">Mentions légales</a> · <a href="/mentions-legales#confidentialite">Confidentialité</a> · <a href="/rss.xml">RSS</a></span>
       </div>
     </div>
   </footer>

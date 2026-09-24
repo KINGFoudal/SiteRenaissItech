@@ -1,4 +1,13 @@
-# Activer la newsletter
+# Activer les emails (formulaires) et la newsletter
+
+La même clé Brevo sert à deux choses :
+
+- **les emails des formulaires** : vous êtes prévenu à chaque demande de contact ou rendez-vous, et le client reçoit une confirmation (avec invitation agenda pour les rendez-vous) ;
+- **la newsletter**.
+
+Sans clé, les demandes sont quand même enregistrées dans la base Cloudflare (tables `contacts` et `rendez_vous`), consultables dans Cloudflare → D1 → renaissance-itech-db → Console.
+
+## Newsletter
 
 Le formulaire d'inscription (page Blog et bas de chaque article) envoie les emails
 au Worker Cloudflare (`worker/index.js`), qui les ajoute à une liste **Brevo**.
@@ -27,8 +36,10 @@ Dans le tableau de bord : **Workers & Pages → renaissance-itech → Paramètre
 | `BREVO_LIST_ID` | Texte | l'ID de la liste |
 | `BREVO_DOI_TEMPLATE_ID` | Texte | l'ID du modèle de confirmation (recommandé) |
 
+`NOTIFY_EMAIL` (qui reçoit les demandes) et `SENDER_EMAIL` (expéditeur) valent `contact@renaissance-itech.com` dans `wrangler.jsonc`. L'expéditeur doit être validé dans Brevo (**Expéditeurs & domaines**).
+
 Avec le double opt-in, l'abonné reçoit un email de confirmation, puis revient sur
-`/blog.html?newsletter=confirmee` où un message lui souhaite la bienvenue.
+`/blog?newsletter=confirmee` où un message lui souhaite la bienvenue.
 
 ## 3. Envoyer une newsletter
 
