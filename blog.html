@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blog — Conseils, actualités et tendances digitales | Renaissance iTech</title>
+  <meta name="description" content="Conseils, actualités et tendances : IA, développement web, entrepreneuriat, cybersécurité et design par l’équipe Renaissance iTech.">
+  <meta name="theme-color" content="#0A0A0A">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html" aria-label="Renaissance iTech — accueil">
+        <img class="logo-mark" src="assets/img/logo-mark.svg" alt="" width="34" height="34">
+        <span class="logo-text">Renaissance<span>iTech</span></span>
+      </a>
+      <nav class="nav" id="nav" aria-label="Navigation principale">
+        <a href="index.html">Accueil</a>
+        <a href="services.html">Services</a>
+        <a href="formations.html">Formations</a>
+        <a href="boutique.html">Boutique</a>
+        <a href="blog.html" aria-current="page">Blog</a>
+        <a href="a-propos.html">À propos</a>
+      </nav>
+      <div class="header-actions">
+        
+        <button class="burger" type="button" aria-label="Ouvrir le menu" aria-controls="nav" aria-expanded="false" data-burger><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    <div class="container">
+      <span class="eyebrow">Blog</span>
+      <h1 class="page-title">Conseils, actualités et tendances</h1>
+      <div class="pills" role="tablist" data-filter=".post">
+        <button class="pill is-active" type="button" data-cat="all">Tous</button>
+        <button class="pill" type="button" data-cat="ia">IA</button>
+        <button class="pill" type="button" data-cat="web">Développement Web</button>
+        <button class="pill" type="button" data-cat="entrepreneuriat">Entrepreneuriat</button>
+        <button class="pill" type="button" data-cat="cyber">Cybersécurité</button>
+        <button class="pill" type="button" data-cat="design">Design</button>
+      </div>
+      <div class="posts">
+        <article class="card post" data-cat="ia">
+          <div class="thumb"><img src="assets/img/b-ia.svg" alt="" width="400" height="260" loading="lazy"><span class="badge">IA</span></div>
+          <div class="post-body">
+            <h3>Comment l’IA transforme les entreprises en 2024</h3>
+            <div class="post-meta"><time>12 Mai 2024</time><a class="link-arrow" href="blog.html">Lire l’article</a></div>
+          </div>
+        </article>
+        <article class="card post" data-cat="web">
+          <div class="thumb"><img src="assets/img/b-securite.svg" alt="" width="400" height="260" loading="lazy"><span class="badge">Développement Web</span></div>
+          <div class="post-body">
+            <h3>5 bonnes pratiques pour sécuriser votre site web</h3>
+            <div class="post-meta"><time>08 Mai 2024</time><a class="link-arrow" href="blog.html">Lire l’article</a></div>
+          </div>
+        </article>
+        <article class="card post" data-cat="entrepreneuriat">
+          <div class="thumb"><img src="assets/img/b-entrepreneuriat.svg" alt="" width="400" height="260" loading="lazy"><span class="badge">Entrepreneuriat</span></div>
+          <div class="post-body">
+            <h3>Automatiser pour innover : le levier de croissance</h3>
+            <div class="post-meta"><time>02 Mai 2024</time><a class="link-arrow" href="blog.html">Lire l’article</a></div>
+          </div>
+        </article>
+      </div>
+      <p class="page-lead" data-empty hidden>Aucun article dans cette catégorie pour le moment.</p>
+      <div class="center-link"><a class="link-arrow" href="blog.html">Voir tous les articles</a></div>
+    </div>
+  </main>
+  <div class="toast" role="status" aria-live="polite" data-toast></div>
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>

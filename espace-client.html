@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Espace client — Tableau de bord | Renaissance iTech</title>
+  <meta name="description" content="Suivez vos projets, devis, factures, rendez-vous et messages dans votre espace client Renaissance iTech.">
+  <meta name="theme-color" content="#0A0A0A">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" data-sidebar>
+      <a class="logo" href="index.html"><img class="logo-mark" src="assets/img/logo-mark.svg" alt="" width="26" height="26"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+      <div class="side-user"><img class="avatar" src="assets/img/avatar-client.svg" alt="" width="40" height="40"><div><strong>Mohamed Diallo</strong><span>Client Premium</span></div></div>
+      <nav class="side-nav" aria-label="Espace client">
+        <a href="#dashboard" data-view-link="dashboard" class="is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Tableau de bord</a>
+        <a href="#projets" data-view-link="projets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Mes projets</a>
+        <a href="#factures" data-view-link="factures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>Devis &amp; Factures</a>
+        <a href="#rdv" data-view-link="rdv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Rendez-vous</a>
+        <a href="#messages" data-view-link="messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>Messages</a>
+        <a href="#documents" data-view-link="documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z"/><path d="M15 2v5h5"/><path d="M4 6v14a2 2 0 0 0 2 2h10"/></svg>Documents</a>
+        <a href="#parametres" data-view-link="parametres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Paramètres</a>
+      </nav>
+      <div class="side-foot"><a href="index.html">← Retour au site</a></div>
+    </aside>
+    <main class="app-main">
+      <div class="app-top">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="icon-btn app-burger" type="button" aria-label="Menu" data-app-burger><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+          <h1 data-view-title>Tableau de bord</h1>
+        </div>
+        <div class="app-top-actions">
+          <button class="icon-btn" type="button" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="dot"></span></button>
+          <img class="avatar" src="assets/img/avatar-client.svg" alt="Mohamed Diallo" width="40" height="40">
+        </div>
+      </div>
+
+      <section class="app-view" data-view="dashboard">
+        <div class="kpis">
+          <div class="card kpi"><h3>Mes projets</h3><strong>3</strong><span class="hot">En cours</span></div>
+          <div class="card kpi"><h3>Devis acceptés</h3><strong>2</strong><span>Ce mois</span></div>
+          <div class="card kpi"><h3>Factures payées</h3><strong>4</strong><span>Ce mois</span></div>
+          <div class="card kpi"><h3>Rendez-vous</h3><strong>1</strong><span>Aujourd’hui</span></div>
+        </div>
+        <div class="panels">
+          <div class="card panel">
+            <h2>Mes projets récents</h2>
+            <ul class="row-list">
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><span class="grow">Création site vitrine</span><span class="tag-status">En cours</span></li>
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 2-1.5L22 8H6"/></svg></span><span class="grow">Application e-commerce</span><span class="tag-status">En cours</span></li>
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/><path d="M1 13v2M23 13v2"/></svg></span><span class="grow">Automatisation IA</span><span class="tag-status">En cours</span></li>
+            </ul>
+            <a class="link-arrow" href="#projets" data-view-link="projets">Voir tous mes projets</a>
+          </div>
+          <div class="card panel">
+            <h2>Activités récentes</h2>
+            <ul class="row-list">
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="grow">Devis DEV-2024-015 accepté</span><span class="time">Il y a 2h</span></li>
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-5"/></svg></span><span class="grow">Paiement facture #FAC-2024-012</span><span class="time">Il y a 1j</span></li>
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="grow">Rendez-vous le 15 Mai à 11:00</span><span class="time">Il y a 2j</span></li>
+              <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span><span class="grow">Nouveau message de l’équipe</span><span class="time">Il y a 3j</span></li>
+            </ul>
+            <a class="link-arrow" href="#messages" data-view-link="messages">Voir toutes les activités</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="projets" hidden>
+        <div class="card panel table-wrap">
+          <table class="table">
+            <thead><tr><th>Projet</th><th>Avancement</th><th>Échéance</th><th>Statut</th></tr></thead>
+            <tbody>
+              <tr><td>Création site vitrine</td><td><div class="progress"><i style="width:70%"></i></div></td><td>30 Mai 2024</td><td><span class="tag-status">En cours</span></td></tr>
+              <tr><td>Application e-commerce</td><td><div class="progress"><i style="width:45%"></i></div></td><td>15 Juin 2024</td><td><span class="tag-status">En cours</span></td></tr>
+              <tr><td>Automatisation IA</td><td><div class="progress"><i style="width:25%"></i></div></td><td>30 Juin 2024</td><td><span class="tag-status">En cours</span></td></tr>
+              <tr><td>Audit SEO</td><td><div class="progress"><i style="width:100%"></i></div></td><td>10 Avr 2024</td><td><span class="tag-status done">Terminé</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="factures" hidden>
+        <div class="card panel table-wrap">
+          <table class="table">
+            <thead><tr><th>Référence</th><th>Type</th><th>Montant</th><th>Statut</th></tr></thead>
+            <tbody>
+              <tr><td>DEV-2024-015</td><td>Devis</td><td>450 000 FCFA</td><td><span class="tag-status done">Accepté</span></td></tr>
+              <tr><td>FAC-2024-012</td><td>Facture</td><td>250 000 FCFA</td><td><span class="tag-status done">Payée</span></td></tr>
+              <tr><td>FAC-2024-011</td><td>Facture</td><td>120 000 FCFA</td><td><span class="tag-status done">Payée</span></td></tr>
+              <tr><td>DEV-2024-016</td><td>Devis</td><td>300 000 FCFA</td><td><span class="tag-status">En attente</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="rdv" hidden>
+        <div class="card panel">
+          <h2>Prochains rendez-vous</h2>
+          <ul class="row-list">
+            <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="grow">Point d’avancement — site vitrine<br><small class="time">15 Mai à 11:00 · Google Meet</small></span><a class="btn btn-primary btn-sm" href="rendez-vous.html">Rejoindre</a></li>
+          </ul>
+          <a class="link-arrow" href="rendez-vous.html">Prendre un nouveau rendez-vous</a>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="messages" hidden>
+        <div class="card panel">
+          <h2>Messages</h2>
+          <ul class="row-list">
+            <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span><span class="grow">L’équipe : « La maquette de votre page d’accueil est prête. »</span><span class="time">Il y a 3j</span></li>
+            <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg></span><span class="grow">L’équipe : « Votre devis DEV-2024-015 a été validé. »</span><span class="time">Il y a 5j</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="documents" hidden>
+        <div class="card panel">
+          <h2>Documents</h2>
+          <ul class="row-list">
+            <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="grow">Cahier des charges — site vitrine.pdf</span><a class="link-arrow" href="#documents">Télécharger</a></li>
+            <li><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="grow">Contrat de prestation.pdf</span><a class="link-arrow" href="#documents">Télécharger</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="app-view" data-view="parametres" hidden>
+        <form class="card panel" style="max-width:560px" data-demo-form>
+          <h2>Paramètres du compte</h2>
+          <div class="form-grid">
+            <div><label class="field-label" for="p-nom">Nom complet</label><input class="input" id="p-nom" value="Mohamed Diallo"></div>
+            <div><label class="field-label" for="p-email">Email</label><input class="input" id="p-email" type="email" placeholder="Votre email"></div>
+            <div><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+  <div class="toast" role="status" aria-live="polite" data-toast></div>
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
