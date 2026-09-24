@@ -1,0 +1,17 @@
+{
+  // Déploiement Cloudflare du site (fichiers statiques + API newsletter)
+  "name": "renaissance-itech",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page"
+  },
+  "vars": {
+    "SITE_URL": "https://www.renaissance-itech.com"
+    // BREVO_LIST_ID et BREVO_DOI_TEMPLATE_ID : à renseigner dans le tableau de bord Cloudflare
+    // BREVO_API_KEY : à ajouter comme secret (npx wrangler secret put BREVO_API_KEY)
+  }
+}

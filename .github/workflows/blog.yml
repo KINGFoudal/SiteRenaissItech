@@ -1,0 +1,46 @@
+# Publie automatiquement le blog dès qu'un article est ajouté ou modifié.
+name: Publier le blog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "content/blog/**"
+      - "scripts/build-blog.mjs"
+  pull_request:
+    paths:
+      - "content/blog/**"
+      - "scripts/build-blog.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  blog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Pull request : on vérifie seulement les métadonnées des articles
+      - name: Vérifier les articles
+        if: github.event_name == 'pull_request'
+        run: npm run check
+
+      # Branche main : on génère les pages et on les enregistre
+      - name: Générer le blog
+        if: github.event_name != 'pull_request'
+        run: npm run build
+      - name: Enregistrer les pages générées
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blog.html blog rss.xml sitemap.xml
+          git diff --cached --quiet || git commit -m "Blog : mise à jour automatique des pages"
+          git push

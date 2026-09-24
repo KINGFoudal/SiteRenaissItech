@@ -3,11 +3,6 @@
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
-  const store = {
-    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
-  };
-
   const toastEl = $('[data-toast]');
   let toastTimer;
   const toast = (msg) => {
@@ -28,24 +23,88 @@
     });
   }
 
-  /* ---------- Filtres (boutique, formations, blog) ---------- */
+  /* ---------- Filtres et recherche (boutique, formations, blog) ---------- */
   $$('[data-filter]').forEach((bar) => {
     const items = $$(bar.dataset.filter);
     const empty = $('[data-empty]');
-    bar.addEventListener('click', (e) => {
-      const btn = e.target.closest('.pill');
-      if (!btn) return;
-      $$('.pill', bar).forEach((p) => p.classList.toggle('is-active', p === btn));
-      const cat = btn.dataset.cat;
+    const search = $('[data-blog-search]');
+    let cat = 'all';
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
       let shown = 0;
       items.forEach((it) => {
-        const ok = cat === 'all' || it.dataset.cat === cat;
+        const ok = (cat === 'all' || it.dataset.cat === cat) && (!q || (it.dataset.search || '').includes(q));
         it.hidden = !ok;
         if (ok) shown++;
       });
       if (empty) empty.hidden = shown > 0;
+    };
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill');
+      if (!btn) return;
+      $$('.pill', bar).forEach((p) => p.classList.toggle('is-active', p === btn));
+      cat = btn.dataset.cat;
+      apply();
+    });
+    search?.addEventListener('input', apply);
+  });
+
+  /* ---------- Newsletter ---------- */
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  $$('[data-newsletter]').forEach((form) => {
+    const msg = $('[data-nl-msg]', form);
+    const say = (ok, text) => { msg.hidden = false; msg.className = `form-msg ${ok ? 'ok' : 'err'}`; msg.textContent = text; };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = form.email.value.trim();
+      if (!EMAIL_RE.test(email)) return say(false, 'Merci d’indiquer un email valide.');
+      if (!form.consent.checked) return say(false, 'Merci de cocher la case de consentement.');
+      const btn = $('button[type=submit]', form);
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, consent: true, website: form.website.value, source: form.dataset.source || '' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Inscription impossible pour le moment.');
+        say(true, data.message || 'Merci ! Vérifiez votre boîte mail pour confirmer votre inscription.');
+        form.reset();
+      } catch (err) {
+        say(false, err.message === 'Failed to fetch' ? 'Connexion impossible. Réessayez dans un instant.' : err.message);
+      } finally {
+        btn.disabled = false;
+      }
     });
   });
+
+  if (new URLSearchParams(location.search).get('newsletter') === 'confirmee') {
+    setTimeout(() => toast('Inscription confirmée, bienvenue dans la newsletter !'), 400);
+  }
+
+  /* ---------- Article : progression, sommaire, partage ---------- */
+  const bar = $('[data-read-progress]');
+  const prose = $('.prose');
+  if (bar && prose) {
+    const tocLinks = $$('[data-toc-link]');
+    const heads = tocLinks.map((l) => document.getElementById(l.getAttribute('href').slice(1))).filter(Boolean);
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const r = prose.getBoundingClientRect();
+      const total = r.height - innerHeight * 0.6;
+      bar.style.width = `${Math.min(100, Math.max(0, (-r.top / Math.max(total, 1)) * 100))}%`;
+      let current = heads[0];
+      heads.forEach((h) => { if (h.getBoundingClientRect().top < 140) current = h; });
+      tocLinks.forEach((l) => l.classList.toggle('is-active', current && l.getAttribute('href') === `#${current.id}`));
+    };
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+  }
+  $$('[data-copy-link]').forEach((btn) => btn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(btn.dataset.copyLink); toast('Lien copié'); } catch { toast(btn.dataset.copyLink); }
+  }));
 
   /* ---------- Prise de rendez-vous ---------- */
   const booking = $('[data-booking]');

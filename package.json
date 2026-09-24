@@ -1,0 +1,14 @@
+{
+  "name": "site-renaissance-itech",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-blog.mjs",
+    "check": "node scripts/build-blog.mjs --check",
+    "dev": "npx serve ."
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0",
+    "marked": "^15.0.0"
+  }
+}

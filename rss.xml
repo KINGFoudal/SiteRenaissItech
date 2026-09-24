@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Blog Renaissance iTech</title>
+    <link>https://www.renaissance-itech.com/blog.html</link>
+    <atom:link href="https://www.renaissance-itech.com/rss.xml" rel="self" type="application/rss+xml"/>
+    <description>Conseils, actualités et tendances : IA, développement web, cybersécurité et entrepreneuriat.</description>
+    <language>fr-FR</language>
+    <item>
+      <title>Comment l'IA transforme les entreprises en 2026</title>
+      <link>https://www.renaissance-itech.com/blog/comment-ia-transforme-les-entreprises/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/comment-ia-transforme-les-entreprises/</guid>
+      <pubDate>Sat, 12 Sep 2026 00:00:00 GMT</pubDate>
+      <category>IA</category>
+      <description>Service client, gestion administrative, marketing : où l'IA fait vraiment gagner du temps aux PME, et comment démarrer sans se tromper.</description>
+    </item>
+    <item>
+      <title>5 bonnes pratiques pour sécuriser votre site web</title>
+      <link>https://www.renaissance-itech.com/blog/securiser-son-site-web/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/securiser-son-site-web/</guid>
+      <pubDate>Tue, 08 Sep 2026 00:00:00 GMT</pubDate>
+      <category>Cybersécurité</category>
+      <description>Mises à jour, HTTPS, mots de passe, sauvegardes, surveillance : les 5 réflexes essentiels pour protéger votre site et les données de vos clients.</description>
+    </item>
+    <item>
+      <title>Automatiser pour innover : le levier de croissance des PME</title>
+      <link>https://www.renaissance-itech.com/blog/automatiser-pour-innover/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/automatiser-pour-innover/</guid>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+      <category>Entrepreneuriat</category>
+      <description>Automatiser les tâches répétitives libère du temps pour vendre et innover. Méthode en 4 étapes pour identifier et lancer vos premières automatisations.</description>
+    </item>
+  </channel>
+</rss>
