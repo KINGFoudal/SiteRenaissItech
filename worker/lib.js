@@ -96,7 +96,7 @@ export const emailLayout = (title, body) => `<div style="font-family:Arial,sans-
     <p style="margin-top:24px;font-size:13px;color:#666">Renaissance iTech · contact@renaissance-itech.com · +33 7 75 70 08 67</p>
   </div></div>`;
 
-export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="${esc(href)}" style="display:inline-block;background:#FF6B1A;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:6px">${esc(label)}</a></p>`;
+export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="${esc(href)}" style="display:inline-block;background:#C2410C;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:6px">${esc(label)}</a></p>`;
 
 export const emailTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:8px 0;color:#666;width:130px;vertical-align:top">${esc(k)}</td><td style="padding:8px 0">${esc(v).replace(/\n/g, '<br>')}</td></tr>`).join('')}</table>`;
 

@@ -4,7 +4,7 @@ import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton, emailTable,
   sendEmail, notifyEmail, siteUrl, upsertClient,
 } from './lib.js';
-import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions } from './auth.js';
+import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
 
 const STATUTS_PROJET = ['nouveau', 'en_cours', 'en_pause', 'termine', 'annule'];
@@ -201,6 +201,26 @@ export async function adminAssistant(request, env) {
 
 /* ---------------------------------------------------------------- Accès premium à l'espace client */
 
+// Email au client : identifiant, mot de passe provisoire et invitation à le changer dans son espace
+export function emailIdentifiants(env, request, { email, nom, provisoire, nouveau }) {
+  const lien = `${siteUrl(env, request)}/espace-client`;
+  return sendEmail(env, {
+    to: email, replyTo: notifyEmail(env),
+    subject: nouveau ? 'Votre espace client Renaissance iTech est ouvert' : 'Votre nouveau mot de passe provisoire Renaissance iTech',
+    html: emailLayout(`${nouveau ? 'Bienvenue' : 'Bonjour'}${nom ? ` ${esc(nom)}` : ''}`, `${nouveau
+      ? '<p>Votre espace client Renaissance iTech est prêt : vous pourrez y suivre vos projets, vos rendez-vous et échanger avec notre équipe.</p>'
+      : '<p>Un nouveau mot de passe provisoire a été créé pour votre espace client. L’ancien ne fonctionne plus.</p>'}
+      <p>Voici vos identifiants de connexion :</p>
+      ${emailTable([['Identifiant', email], ['Mot de passe provisoire', provisoire]])}
+      <div style="margin:18px 0;padding:14px 16px;border-radius:6px;background:#FFF1E8;border-left:3px solid #C2410C">
+        <strong>Important : changez ce mot de passe.</strong><br>
+        À votre première connexion, votre espace vous demandera de choisir votre mot de passe personnel. Le mot de passe provisoire cessera alors de fonctionner. Il expire automatiquement dans ${PROVISOIRE_JOURS} jours s’il n’est pas utilisé.
+      </div>
+      ${emailButton(lien, 'Me connecter et choisir mon mot de passe')}
+      <p style="font-size:13px;color:#666">Vous pourrez le modifier à tout moment dans « Mon compte ». En cas d’oubli, utilisez « Mot de passe oublié ? » sur la page de connexion. Vous n’attendiez pas cet email ? Répondez-nous simplement.</p>`),
+  });
+}
+
 // Donne l'accès : mot de passe provisoire à transmettre au client (affiché une seule fois)
 async function donnerAcces(env, email) {
   const provisoire = motDePasseProvisoire();
@@ -220,21 +240,14 @@ export async function adminClientCreer(request, env, ctx) {
   await upsertClient(env, { email, nom: clean(data.nom, 100), telephone: clean(data.telephone, 30) });
   if (clean(data.entreprise, 120)) await env.DB.prepare('UPDATE clients SET entreprise = COALESCE(entreprise, ?) WHERE email = ?').bind(clean(data.entreprise, 120), email).run();
   const provisoire = await donnerAcces(env, email);
-  if (data.email_bienvenue !== false) {
-    const nom = clean(data.nom, 100);
-    ctx.waitUntil(sendEmail(env, {
-      to: email, replyTo: notifyEmail(env),
-      subject: 'Votre espace client Renaissance iTech est ouvert',
-      html: emailLayout(`Bienvenue${nom ? ` ${esc(nom)}` : ''}`, `<p>Votre accès à l’espace client Renaissance iTech est prêt. Vous pourrez y suivre vos projets, vos rendez-vous et échanger avec notre équipe.</p><p><strong>Identifiant :</strong> ${esc(email)}<br><strong>Mot de passe :</strong> le mot de passe provisoire que notre équipe vous transmet séparément. Vous choisirez votre propre mot de passe à la première connexion.</p>${emailButton(`${siteUrl(env, request)}/espace-client`, 'Accéder à mon espace client')}`),
-    }));
-  }
-  return json({ ok: true, email, mot_de_passe_provisoire: provisoire });
+  const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email, nom: clean(data.nom, 100), provisoire, nouveau: true });
+  return json({ ok: true, email, mot_de_passe_provisoire: provisoire, email_envoye: Boolean(envoye) });
 }
 
 export async function adminClientAcces(request, env) {
   await requireSession(request, env, 'admin');
   const data = await readJson(request);
-  const client = await env.DB.prepare('SELECT id, email, acces_premium FROM clients WHERE id = ?').bind(int(data.id)).first();
+  const client = await env.DB.prepare('SELECT id, email, nom, acces_premium FROM clients WHERE id = ?').bind(int(data.id)).first();
   if (!client) throw new HttpError(404, 'Client introuvable.');
   if (data.action === 'desactiver') {
     await env.DB.prepare('UPDATE clients SET acces_premium = 0 WHERE id = ?').bind(client.id).run();
@@ -243,7 +256,8 @@ export async function adminClientAcces(request, env) {
   }
   if (data.action === 'provisoire') {
     const provisoire = await donnerAcces(env, client.email);
-    return json({ ok: true, email: client.email, mot_de_passe_provisoire: provisoire });
+    const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email: client.email, nom: client.nom, provisoire, nouveau: !client.acces_premium });
+    return json({ ok: true, email: client.email, mot_de_passe_provisoire: provisoire, email_envoye: Boolean(envoye) });
   }
   throw new HttpError(400, 'Action inconnue.');
 }

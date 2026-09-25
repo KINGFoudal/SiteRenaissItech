@@ -23,6 +23,7 @@ const LIEN_MINUTES = 30;
 const ITERATIONS = 100000;
 const MAX_ECHECS_EMAIL = 8;   // par adresse, sur 15 minutes
 const MAX_ECHECS_IP = 25;     // par connexion internet, sur 15 minutes
+export const PROVISOIRE_JOURS = 7; // durée de validité d'un mot de passe provisoire
 
 export const adminEmails = (env) => (env.ADMIN_EMAILS || 'contact@renaissance-itech.com').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -79,7 +80,9 @@ async function compte(env, email, role) {
     const row = await env.DB.prepare('SELECT email, mot_de_passe, doit_changer_mdp FROM administrateurs WHERE email = ?').bind(email).first();
     return row || { email, mot_de_passe: null, doit_changer_mdp: 0 };
   }
-  return env.DB.prepare('SELECT id, email, nom, mot_de_passe, doit_changer_mdp FROM clients WHERE email = ? AND acces_premium = 1').bind(email).first();
+  return env.DB.prepare(`SELECT id, email, nom, mot_de_passe, doit_changer_mdp,
+      (doit_changer_mdp = 1 AND mdp_maj_le < datetime('now', '-${PROVISOIRE_JOURS} days')) AS provisoire_expire
+    FROM clients WHERE email = ? AND acces_premium = 1`).bind(email).first();
 }
 
 async function enregistrerMotDePasse(env, email, role, motDePasse, provisoire = false) {
@@ -139,6 +142,7 @@ export async function connexion(request, env) {
   await env.DB.prepare('INSERT INTO tentatives_connexion (email, ip_hash, reussi) VALUES (?, ?, ?)').bind(email, ip, ok ? 1 : 0).run();
   // Même message dans tous les cas : on ne révèle pas quelles adresses ont un accès
   if (!ok) throw new HttpError(401, 'Email ou mot de passe incorrect.');
+  if (c.provisoire_expire) throw new HttpError(401, `Votre mot de passe provisoire a expiré (validité ${PROVISOIRE_JOURS} jours). Cliquez sur « Mot de passe oublié ? » pour en choisir un nouveau.`);
 
   return ouvrirSession(env, request, email, role, { doit_changer: Boolean(c.doit_changer_mdp) });
 }

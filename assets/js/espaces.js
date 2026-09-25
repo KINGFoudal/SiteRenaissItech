@@ -283,7 +283,7 @@
         ? `<button class="btn btn-outline btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Nouveau mot de passe provisoire</button><button class="btn btn-outline btn-sm" type="button" data-acces="desactiver" data-id="${c.id}">Désactiver l’accès</button>`
         : `<button class="btn btn-primary btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Donner l’accès premium</button>`);
       return `<div class="card panel"><div class="panel-head"><h2>Clients</h2><button class="btn btn-primary btn-sm" type="button" data-new-client>+ Nouveau client premium</button></div>
-        <p class="form-note">Seuls les clients premium peuvent se connecter à l’espace client, avec leur email et un mot de passe. À la création, un mot de passe provisoire s’affiche une seule fois : transmettez-le au client, qui choisira le sien à la première connexion.</p>
+        <p class="form-note">Seuls les clients premium peuvent se connecter à l’espace client, avec leur email et un mot de passe. À la création, un mot de passe provisoire est généré automatiquement et envoyé au client par email ; il devra le remplacer par le sien à sa première connexion.</p>
         ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Entreprise</th><th>Accès espace client</th><th>Projets</th><th>RDV</th><th>Dernière connexion</th><th></th></tr></thead><tbody>${rows.map((c) => `<tr><td><strong>${h(c.nom || '')}</strong><br><a href="mailto:${h(c.email)}"><small>${h(c.email)}</small></a>${c.telephone ? `<br><small class="muted">${h(c.telephone)}</small>` : ''}</td><td>${h(c.entreprise || '')}</td><td>${acces(c)}</td><td>${+c.nb_projets}</td><td>${+c.nb_rdv}</td><td><small>${c.derniere_connexion ? h(fmtSql(c.derniere_connexion)) : 'Jamais'}</small></td><td class="actions">${actions(c)}</td></tr>`).join('')}</tbody></table></div>` : empty('Aucun client pour le moment.')}</div>`;
     } },
     compte: { title: 'Mon compte', render() {
@@ -377,11 +377,11 @@
       const action = ac.dataset.acces;
       const question = action === 'desactiver'
         ? `Désactiver l’accès de ${c.email} ? Le client sera déconnecté et ne pourra plus se connecter.`
-        : c.acces_premium ? `Créer un nouveau mot de passe provisoire pour ${c.email} ? L’ancien ne fonctionnera plus.` : `Donner l’accès premium à ${c.email} ?`;
+        : c.acces_premium ? `Créer un nouveau mot de passe provisoire pour ${c.email} ? L’ancien ne fonctionnera plus et le client le recevra par email.` : `Donner l’accès premium à ${c.email} ? Ses identifiants lui seront envoyés par email.`;
       if (!confirm(question)) return;
       try {
         const res = await api('/api/admin/client/acces', { id: c.id, action });
-        if (res.mot_de_passe_provisoire) showProvisoire(res.email, res.mot_de_passe_provisoire);
+        if (res.mot_de_passe_provisoire) showProvisoire(res.email, res.mot_de_passe_provisoire, res.email_envoye);
         else toast(res.message);
         await views.clients.load(); await render();
       } catch (err) { toast(err.message); }
@@ -433,13 +433,15 @@
     });
   }
 
-  function showProvisoire(email, mdp) {
+  function showProvisoire(email, mdp, envoye) {
     openModal(`<h2 id="modal-title">Accès premium prêt</h2>
-      <p>Transmettez ces identifiants à votre client (de préférence par téléphone ou message, séparément de l’email de bienvenue).</p>
+      ${envoye
+        ? `<p class="form-msg ok">Les identifiants ont été envoyés à <strong>${h(email)}</strong>, avec l’invitation à changer le mot de passe dans son espace.</p>`
+        : `<p class="form-msg err">L’email n’a pas pu être envoyé : transmettez ces identifiants au client vous-même.</p>`}
       <p><strong>Identifiant :</strong> ${h(email)}</p>
       <div class="temp-pwd"><code>${h(mdp)}</code><button class="btn btn-outline btn-sm" type="button" data-copy="${h(mdp)}">Copier</button></div>
-      <p class="form-note">Ce mot de passe provisoire ne sera plus affiché. Le client devra le remplacer par le sien à sa première connexion. S’il l’oublie, il pourra utiliser « Mot de passe oublié ».</p>
-      <button class="btn btn-primary" type="button" data-modal-close>J’ai noté le mot de passe</button>`);
+      <p class="form-note">Mot de passe provisoire, valable 7 jours. À sa première connexion, le client devra choisir son mot de passe personnel ; le provisoire cessera alors de fonctionner. Il ne sera plus affiché ici.</p>
+      <button class="btn btn-primary" type="button" data-modal-close>Fermer</button>`);
     $$('[data-modal-close]', modal).forEach((b) => b.addEventListener('click', closeModal));
   }
 
@@ -454,15 +456,15 @@
           <div><label class="field-label" for="k-ent">Entreprise</label><input class="input" id="k-ent" name="entreprise"></div>
           <div><label class="field-label" for="k-tel">Téléphone</label><input class="input" id="k-tel" name="telephone"></div>
         </div>
-        <label class="consent consent-light"><input type="checkbox" name="bienvenue" checked> Envoyer un email de bienvenue (sans le mot de passe)</label>
+        <label class="consent consent-light"><input type="checkbox" name="envoyer" checked> Envoyer ses identifiants au client par email, avec l’invitation à changer son mot de passe</label>
         <button class="btn btn-primary" type="submit">Créer l’accès</button>
       </form>`);
     $('[data-client-creer]').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const f = ev.currentTarget;
       try {
-        const res = await api('/api/admin/client/creer', { email: f.email.value.trim(), nom: f.nom.value, entreprise: f.entreprise.value, telephone: f.telephone.value, email_bienvenue: f.bienvenue.checked });
-        showProvisoire(res.email, res.mot_de_passe_provisoire);
+        const res = await api('/api/admin/client/creer', { email: f.email.value.trim(), nom: f.nom.value, entreprise: f.entreprise.value, telephone: f.telephone.value, envoyer_email: f.envoyer.checked });
+        showProvisoire(res.email, res.mot_de_passe_provisoire, res.email_envoye);
         await load();
         if (location.hash !== '#clients') location.hash = '#clients'; else { await views.clients.load(); await render(); }
       } catch (err) { toast(err.message); }
