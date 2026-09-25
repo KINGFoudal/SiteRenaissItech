@@ -386,13 +386,25 @@
 
 
   /* ---------- Anti-robot Cloudflare Turnstile (actif si une clé est configurée) ---------- */
+
+  // Options communes : message clair (avec le code d'erreur Cloudflare) si la vérification ne peut pas s'afficher
+  const tsOptions = (el, cle) => ({
+    sitekey: cle, theme: 'light', language: 'fr',
+    callback: () => { el.nextElementSibling?.matches('.ts-err') && el.nextElementSibling.remove(); },
+    'error-callback': (code) => {
+      let p = el.nextElementSibling;
+      if (!p?.matches('.ts-err')) { p = document.createElement('p'); p.className = 'form-msg err ts-err'; el.after(p); }
+      p.innerHTML = `La vérification anti-robot n’a pas pu aboutir (code ${String(code).replace(/[^\w-]/g, '')}). Un bloqueur ou un réglage de confidentialité de votre navigateur peut en être la cause. Vous pouvez aussi nous écrire à <a href="mailto:contact@renaissance-itech.com">contact@renaissance-itech.com</a> ou sur <a href="https://wa.me/33775700867" target="_blank" rel="noopener">WhatsApp</a>.`;
+      return true;
+    },
+  });
   const tsForms = $$('[data-turnstile]');
   let tsJeton = () => undefined;
   let tsReset = () => {};
   if (tsForms.length) {
     fetch('/api/config').then((r) => r.json()).then((c) => {
       if (!c.turnstile) return;
-      window.ritTsOk = () => tsForms.forEach((el) => { el.hidden = false; el.dataset.widget = window.turnstile.render(el, { sitekey: c.turnstile, theme: 'light', language: 'fr' }); });
+      window.ritTsOk = () => tsForms.forEach((el) => { el.hidden = false; el.dataset.widget = window.turnstile.render(el, tsOptions(el, c.turnstile)); });
       const sc = document.createElement('script');
       sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ritTsOk';
       sc.async = true;
