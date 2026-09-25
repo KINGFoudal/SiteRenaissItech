@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-blog.mjs",
+    "build": "node scripts/build-blog.mjs && node scripts/version-assets.mjs",
     "check": "node scripts/build-blog.mjs --check",
     "dev": "npx serve ."
   },
