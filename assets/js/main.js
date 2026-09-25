@@ -241,7 +241,7 @@
       try {
         const res = await api('/api/rendez-vous', {
           service, date: ymd(state.date), heure: state.slot, nom, email,
-          telephone: form.tel.value.trim(), message: form.message.value.trim(), website: form.website.value,
+          telephone: form.tel.value.trim(), message: form.message.value.trim(), website: form.website.value, turnstile: tsJeton(form),
         });
         if (res.redirect) { location.href = res.redirect; return; }
         $('[data-confirm-msg]', booking).textContent = res.message;
@@ -262,6 +262,7 @@
         show(4);
       } catch (ex) {
         if (ex.status === 409) { show(2); loadSlots(); toast(ex.message); } else fail(netError(ex));
+        tsReset(form);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Confirmer →';
@@ -383,6 +384,24 @@
     $$('[data-open-assistant]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); toggle(true); }));
   }
 
+
+  /* ---------- Anti-robot Cloudflare Turnstile (actif si une clé est configurée) ---------- */
+  const tsForms = $$('[data-turnstile]');
+  let tsJeton = () => undefined;
+  let tsReset = () => {};
+  if (tsForms.length) {
+    fetch('/api/config').then((r) => r.json()).then((c) => {
+      if (!c.turnstile) return;
+      window.ritTsOk = () => tsForms.forEach((el) => { el.hidden = false; el.dataset.widget = window.turnstile.render(el, { sitekey: c.turnstile, theme: 'light', language: 'fr' }); });
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ritTsOk';
+      sc.async = true;
+      document.head.append(sc);
+      tsJeton = (form) => { const el = $('[data-turnstile]', form); return el?.dataset.widget ? window.turnstile.getResponse(el.dataset.widget) : undefined; };
+      tsReset = (form) => { const el = $('[data-turnstile]', form); if (el?.dataset.widget) window.turnstile.reset(el.dataset.widget); };
+    }).catch(() => {});
+  }
+
   /* ---------- Formulaire de contact ---------- */
   const contact = $('[data-contact-form]');
   if (contact) {
@@ -409,13 +428,14 @@
       btn.textContent = 'Envoi…';
       try {
         const res = await api('/api/contact', {
-          nom: f.nom.value.trim(), email: f.email.value.trim(), sujet: f.sujet.value, message: f.message.value.trim(), website: f.website.value,
+          nom: f.nom.value.trim(), email: f.email.value.trim(), sujet: f.sujet.value, message: f.message.value.trim(), website: f.website.value, turnstile: tsJeton(contact),
         });
         contact.reset();
         if (res.redirect) { location.href = res.redirect; return; }
         say(true, res.message);
       } catch (ex) {
         say(false, netError(ex));
+        tsReset(contact);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Envoyer le message';

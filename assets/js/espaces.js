@@ -17,7 +17,7 @@
   const api = async (path, body) => {
     const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin' });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { const e = new Error(data.error || 'Une erreur est survenue.'); e.status = res.status; throw e; }
+    if (!res.ok) { const e = new Error(data.error || 'Une erreur est survenue.'); e.status = res.status; e.code = data.code; throw e; }
     return data;
   };
 
@@ -39,27 +39,83 @@
     return `<div class="bubble-row ${moi ? 'me' : ''}"><div class="msg-bubble"><span class="msg-author">${m.auteur === 'client' ? 'Client' : 'Équipe Renaissance iTech'} · ${h(fmtSql(m.cree_le))}</span>${h(m.contenu).replace(/\n/g, '<br>')}</div></div>`;
   }).join('')}</div>` : empty('Aucun message pour le moment.'));
 
-  /* ================================================================ Page de connexion (lien reçu par email) */
-  const connexion = $('[data-connexion]');
-  if (connexion) {
-    const jeton = new URLSearchParams(location.search).get('jeton');
-    const btn = $('[data-connexion-btn]');
-    const msg = $('[data-connexion-msg]');
-    if (!jeton) {
-      $('[data-connexion-text]').textContent = 'Ce lien de connexion est incomplet. Demandez un nouveau lien depuis votre espace.';
-      btn.hidden = true;
-    }
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      btn.textContent = 'Connexion…';
-      try {
-        const res = await api('/api/auth/verifier', { jeton });
-        location.replace(res.redirect);
-      } catch (e) {
-        msg.hidden = false; msg.className = 'form-msg err'; msg.textContent = e.message;
-        btn.hidden = true;
-      }
+  /* ---------- Afficher / masquer un mot de passe ---------- */
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-pwd-toggle]');
+    if (!t) return;
+    const input = document.getElementById(t.getAttribute('aria-controls'));
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    t.textContent = show ? 'Masquer' : 'Afficher';
+    t.setAttribute('aria-pressed', String(show));
+  });
+
+  /* ---------- Anti-robot Cloudflare Turnstile (actif si une clé est configurée) ---------- */
+  const tsCle = fetch('/api/config').then((r) => r.json()).then((c) => c.turnstile).catch(() => null);
+  let tsScript;
+  const initTurnstile = async () => {
+    const cle = await tsCle;
+    if (!cle) return;
+    tsScript ||= new Promise((ok) => {
+      window.ritTsOk = ok;
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ritTsOk';
+      sc.async = true;
+      document.head.append(sc);
     });
+    await tsScript;
+    $$('[data-turnstile]').forEach((el) => {
+      if (el.dataset.widget) return;
+      el.hidden = false;
+      el.dataset.widget = window.turnstile.render(el, { sitekey: cle, theme: 'light', language: 'fr' });
+    });
+  };
+  const tsJeton = (form) => { const el = $('[data-turnstile]', form); return el?.dataset.widget && window.turnstile ? window.turnstile.getResponse(el.dataset.widget) : undefined; };
+  const tsReset = (form) => { const el = $('[data-turnstile]', form); if (el?.dataset.widget && window.turnstile) window.turnstile.reset(el.dataset.widget); };
+  initTurnstile();
+
+  const say = (el, ok, text) => { el.hidden = false; el.className = `form-msg ${ok ? 'ok' : 'err'}`; el.textContent = text; };
+  const REGLE = /^(?=.*[a-zA-Z])(?=.*\d).{10,128}$/;
+  const checkNouveau = (nouveau, confirmation) => {
+    if (!REGLE.test(nouveau)) return 'Le mot de passe doit contenir au moins 10 caractères, dont une lettre et un chiffre.';
+    if (nouveau !== confirmation) return 'Les deux mots de passe ne sont pas identiques.';
+    return null;
+  };
+
+  /* ================================================================ Page « mot de passe » (oublié / nouveau) */
+  const mdpPage = $('[data-mdp-page]');
+  if (mdpPage) {
+    const q = new URLSearchParams(location.search);
+    const jeton = q.get('jeton');
+    const espace = q.get('espace') === 'admin' ? 'admin' : 'client';
+    $('[data-mdp-retour]').href = espace === 'admin' ? '/admin' : '/espace-client';
+    if (jeton) {
+      $('[data-mdp-title]').textContent = 'Nouveau mot de passe';
+      $('[data-mdp-demande]').hidden = true;
+      $('[data-mdp-nouveau]').hidden = false;
+      $('[data-mdp-nouveau-form]').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = e.currentTarget; const msg = $('[data-mdp-msg2]');
+        const err = checkNouveau(f.nouveau.value, f.confirmation.value);
+        if (err) return say(msg, false, err);
+        $('button[type=submit]', f).disabled = true;
+        try {
+          const res = await api('/api/auth/reinitialiser', { jeton, mot_de_passe: f.nouveau.value });
+          say(msg, true, `${res.message} Redirection…`);
+          setTimeout(() => location.replace(res.redirect), 900);
+        } catch (ex) { say(msg, false, ex.message); $('button[type=submit]', f).disabled = false; }
+      });
+    } else {
+      $('[data-mdp-demande-form]').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = e.currentTarget; const msg = $('[data-mdp-msg]');
+        $('button', f).disabled = true;
+        try {
+          const res = await api('/api/auth/mot-de-passe-oublie', { email: f.email.value.trim(), espace, turnstile: tsJeton(f) });
+          say(msg, true, res.message); f.reset(); tsReset(f);
+        } catch (ex) { say(msg, false, ex.message); tsReset(f); } finally { $('button', f).disabled = false; }
+      });
+    }
     return;
   }
 
@@ -75,26 +131,94 @@
   let data = null;
 
   /* ---------- Connexion / déconnexion ---------- */
+  const changeEl = $('[data-change]');
+  const ecrans = { login: loginEl, change: changeEl, app: appEl, '2fa': $('[data-2fa]'), totp: $('[data-totp]') };
+  const screen = (name) => Object.entries(ecrans).forEach(([k, el]) => { if (el) el.hidden = k !== name; });
+  let defi = null;
+  // Mot de passe provisoire à remplacer : on le garde en mémoire juste après la connexion
+  const showChange = (provisoire) => {
+    const f = $('[data-change-form]');
+    f.actuel.value = provisoire || '';
+    f.actuel.closest('div:not(.pwd)').hidden = Boolean(provisoire);
+    screen('change');
+    (provisoire ? f.nouveau : f.actuel).focus();
+  };
   $('[data-login-form]').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
     const msg = $('[data-login-msg]');
-    const btn = $('button', f);
+    const btn = $('button[type=submit]', f);
+    if (!f.email.value.trim() || !f.mot_de_passe.value) return say(msg, false, 'Indiquez votre email et votre mot de passe.');
     btn.disabled = true;
     try {
-      const res = await api('/api/auth/lien', { email: f.email.value.trim(), espace: f.dataset.espace });
-      msg.className = 'form-msg ok'; msg.textContent = res.message;
-      f.email.value = '';
+      const res = await api('/api/auth/connexion', { email: f.email.value.trim(), mot_de_passe: f.mot_de_passe.value, espace: f.dataset.espace, turnstile: tsJeton(f) });
+      msg.hidden = true;
+      if (res.etape === '2fa') { defi = res.defi; screen('2fa'); $('#t-code').focus(); }
+      else if (res.doit_changer) showChange(f.mot_de_passe.value);
+      else start();
+      f.mot_de_passe.value = '';
     } catch (err) {
-      msg.className = 'form-msg err'; msg.textContent = err.message;
-    } finally {
-      msg.hidden = false; btn.disabled = false;
+      say(msg, false, err.message);
+    } finally { btn.disabled = false; tsReset(f); }
+  });
+
+  /* ---------- Administration : double authentification ---------- */
+  $('[data-2fa-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget; const msg = $('[data-2fa-msg]');
+    try {
+      const res = await api('/api/auth/2fa', { defi, code: f.code.value.trim() });
+      f.reset(); msg.hidden = true; defi = null;
+      if (res.message) toast(res.message);
+      start();
+    } catch (err) {
+      if (err.code === 'defi_expire') { screen('login'); say($('[data-login-msg]'), false, err.message); return; }
+      say(msg, false, err.message); f.code.select();
     }
   });
-  $('[data-logout]').addEventListener('click', async () => {
+  async function showTotp() {
+    screen('totp');
+    $('[data-totp-etape1]').hidden = false; $('[data-totp-etape2]').hidden = true;
+    try {
+      const { secret, uri } = await api('/api/auth/totp/initier', {});
+      const qr = window.qrcode(0, 'M'); qr.addData(uri); qr.make();
+      $('[data-totp-qr]').innerHTML = qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+      $('[data-totp-secret]').textContent = secret.match(/.{1,4}/g).join(' ');
+      $('#a-code').focus();
+    } catch (err) { say($('[data-totp-msg]'), false, err.message); }
+  }
+  const afficherCodes = (codes) => {
+    $('[data-codes]').innerHTML = codes.map((c) => `<li><code>${h(c)}</code></li>`).join('');
+    $('[data-codes-copier]').onclick = async () => { try { await navigator.clipboard.writeText(codes.join('\n')); toast('Codes copiés'); } catch { toast('Sélectionnez les codes pour les copier'); } };
+  };
+  $('[data-totp-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    try {
+      const res = await api('/api/auth/totp/activer', { code: f.code.value.trim() });
+      f.reset();
+      afficherCodes(res.codes_secours);
+      $('[data-totp-etape1]').hidden = true; $('[data-totp-etape2]').hidden = false;
+    } catch (err) { say($('[data-totp-msg]'), false, err.message); }
+  });
+  $('[data-totp-fin]')?.addEventListener('click', () => start());
+  $('[data-change-form]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const msg = $('[data-change-msg]');
+    const err = checkNouveau(f.nouveau.value, f.confirmation.value);
+    if (err) return say(msg, false, err);
+    try {
+      await api('/api/auth/changer', { actuel: f.actuel.value, nouveau: f.nouveau.value });
+      f.reset(); msg.hidden = true;
+      toast('Votre mot de passe personnel est enregistré');
+      start();
+    } catch (ex) { say(msg, false, ex.message); }
+  });
+  $$('[data-logout]').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/auth/deconnexion', {}).catch(() => {});
     location.reload();
-  });
+  }));
   $('[data-app-burger]').addEventListener('click', () => sidebar.classList.toggle('is-open'));
   $('[data-refresh]').addEventListener('click', () => load().then(render).then(() => toast('Données actualisées')));
 
@@ -162,9 +286,22 @@
             <div><button class="btn btn-primary" type="submit">Enregistrer</button></div>
           </div>
           <p class="form-note">Client depuis le ${h(fmtSql(c.cree_le))}. Pour supprimer votre compte, écrivez à contact@renaissance-itech.com.</p>
-        </form>`;
+        </form>${formMotDePasse()}`;
     } },
   };
+
+  const formMotDePasse = () => `<form class="card panel settings-form" data-mdp-changer>
+      <h2>Changer mon mot de passe</h2>
+      <div class="form-grid">
+        <div><label class="field-label" for="s-actuel">Mot de passe actuel</label><div class="pwd"><input class="input" id="s-actuel" name="actuel" type="password" autocomplete="current-password" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="s-actuel" aria-pressed="false">Afficher</button></div></div>
+        <div class="two">
+          <div><label class="field-label" for="s-nouveau">Nouveau mot de passe</label><div class="pwd"><input class="input" id="s-nouveau" name="nouveau" type="password" autocomplete="new-password" minlength="10" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="s-nouveau" aria-pressed="false">Afficher</button></div></div>
+          <div><label class="field-label" for="s-confirm">Confirmer</label><div class="pwd"><input class="input" id="s-confirm" name="confirmation" type="password" autocomplete="new-password" minlength="10" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="s-confirm" aria-pressed="false">Afficher</button></div></div>
+        </div>
+        <p class="form-note">10 caractères minimum, avec au moins une lettre et un chiffre. Vos autres appareils seront déconnectés.</p>
+        <div><button class="btn btn-primary" type="submit">Mettre à jour</button></div>
+      </div>
+    </form>`;
 
   /* ================================================================ Vues administration */
   const rdvRow = (r) => `<tr><td>${h(fmtDay(r.date))}<br><small class="muted">${h(r.heure)}</small></td><td><strong>${h(r.nom)}</strong><br><small class="muted">${h(r.email)}${r.telephone ? ` · ${h(r.telephone)}` : ''}</small></td><td>${h(r.service)}</td><td>${badge(r.statut)}</td>
@@ -209,7 +346,30 @@
     } },
     clients: { title: 'Clients', async load() { await adminList('clients', '/api/admin/clients'); }, render() {
       const rows = cache.clients?.clients || [];
-      return `<div class="card panel">${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Entreprise</th><th>Téléphone</th><th>Projets</th><th>RDV</th><th>Dernière connexion</th></tr></thead><tbody>${rows.map((c) => `<tr><td><strong>${h(c.nom || '')}</strong><br><a href="mailto:${h(c.email)}"><small>${h(c.email)}</small></a></td><td>${h(c.entreprise || '')}</td><td>${h(c.telephone || '')}</td><td>${+c.nb_projets}</td><td>${+c.nb_rdv}</td><td><small>${c.derniere_connexion ? h(fmtSql(c.derniere_connexion)) : 'Jamais'}</small></td></tr>`).join('')}</tbody></table></div>` : empty('Aucun client pour le moment.')}</div>`;
+      const acces = (c) => (!c.acces_premium ? '<span class="status status-sans">Sans accès</span>'
+        : c.doit_changer_mdp ? '<span class="status status-provisoire">Mot de passe provisoire</span>' : '<span class="status status-premium">Premium actif</span>');
+      const actions = (c) => (c.acces_premium
+        ? `<button class="btn btn-outline btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Nouveau mot de passe provisoire</button><button class="btn btn-outline btn-sm" type="button" data-acces="desactiver" data-id="${c.id}">Désactiver l’accès</button>`
+        : `<button class="btn btn-primary btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Donner l’accès premium</button>`);
+      return `<div class="card panel"><div class="panel-head"><h2>Clients</h2><button class="btn btn-primary btn-sm" type="button" data-new-client>+ Nouveau client premium</button></div>
+        <p class="form-note">Seuls les clients premium peuvent se connecter à l’espace client, avec leur email et un mot de passe. À la création, un mot de passe provisoire est généré automatiquement et envoyé au client par email ; il devra le remplacer par le sien à sa première connexion.</p>
+        ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Entreprise</th><th>Accès espace client</th><th>Projets</th><th>RDV</th><th>Dernière connexion</th><th></th></tr></thead><tbody>${rows.map((c) => `<tr><td><strong>${h(c.nom || '')}</strong><br><a href="mailto:${h(c.email)}"><small>${h(c.email)}</small></a>${c.telephone ? `<br><small class="muted">${h(c.telephone)}</small>` : ''}</td><td>${h(c.entreprise || '')}</td><td>${acces(c)}</td><td>${+c.nb_projets}</td><td>${+c.nb_rdv}</td><td><small>${c.derniere_connexion ? h(fmtSql(c.derniere_connexion)) : 'Jamais'}</small></td><td class="actions">${actions(c)}</td></tr>`).join('')}</tbody></table></div>` : empty('Aucun client pour le moment.')}</div>`;
+    } },
+    compte: { title: 'Mon compte', async load() { cache.totp = await api('/api/auth/totp/statut'); }, render() {
+      const t = cache.totp || {};
+      return `<div class="card panel"><h2>Administrateur</h2><p class="muted">Connecté en tant que <strong>${h(data.moi || '')}</strong>. Par sécurité, la session administrateur dure 12 heures.</p></div>
+        <div class="card panel"><h2>Double authentification</h2>
+          <p>${t.actif ? '<span class="status status-premium">Activée</span>' : '<span class="status status-provisoire">Non activée</span>'} · Codes de secours restants : <strong>${+t.codes_restants || 0}</strong></p>
+          <form class="settings-form" data-codes-form>
+            <p class="form-note">Générer de nouveaux codes de secours annule les anciens. Saisissez le code à 6 chiffres de votre application pour confirmer.</p>
+            <div class="inline-form"><label class="sr-only" for="r-code">Code à 6 chiffres</label><input class="input input-code" id="r-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required><button class="btn btn-outline" type="submit">Nouveaux codes de secours</button></div>
+            <ul class="codes-secours" data-codes-new hidden></ul>
+          </form>
+        </div>${formMotDePasse()}`;
+    } },
+    journal: { title: 'Journal', async load() { await adminList('journal', '/api/admin/journal'); }, render() {
+      const rows = cache.journal?.journal || [];
+      return `<div class="card panel"><p class="form-note">Les actions réalisées dans l’administration (conservées 12 mois) : connexions, accès clients, projets, rendez-vous, messages.</p>${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Administrateur</th><th>Action</th><th>Concerne</th></tr></thead><tbody>${rows.map((r) => `<tr><td><small>${h(fmtSql(r.cree_le))}</small></td><td><small>${h(r.email)}</small></td><td><strong>${h(r.action)}</strong>${r.details ? `<br><small class="muted">${h(r.details)}</small>` : ''}</td><td><small>${h(r.cible || '')}</small></td></tr>`).join('')}</tbody></table></div>` : empty('Aucune action enregistrée.')}</div>`;
     } },
     assistant: { title: 'Assistant IA', async load() { await adminList('assistant', '/api/admin/assistant'); }, render() {
       const rows = cache.assistant?.messages || [];
@@ -239,7 +399,9 @@
   }
 
   function handleError(e) {
-    if (e.status === 401 || e.status === 403) { appEl.hidden = true; loginEl.hidden = false; return; }
+    if (e.code === 'mdp_a_changer') return showChange();
+    if (e.code === 'totp_a_configurer') return showTotp();
+    if (e.status === 401 || e.status === 403) return screen('login');
     root.innerHTML = `<div class="card panel"><p class="form-msg err">${h(e.message)}</p></div>`;
   }
 
@@ -257,6 +419,28 @@
         await api('/api/client/message', { projet_id: +form.dataset.reply, contenu });
         await load(); await render(); toast('Message envoyé à l’équipe');
       } catch (err) { toast(err.message); form.querySelector('button').disabled = false; }
+    }
+    if (form.matches('[data-codes-form]')) {
+      e.preventDefault();
+      try {
+        const res = await api('/api/auth/totp/codes', { code: form.code.value.trim() });
+        form.reset();
+        const ul = $('[data-codes-new]', form);
+        ul.innerHTML = res.codes_secours.map((c) => `<li><code>${h(c)}</code></li>`).join('');
+        ul.hidden = false;
+        toast('Nouveaux codes générés : conservez-les, les anciens ne fonctionnent plus');
+      } catch (ex) { toast(ex.message); }
+      return;
+    }
+    if (form.matches('[data-mdp-changer]')) {
+      e.preventDefault();
+      const err = checkNouveau(form.nouveau.value, form.confirmation.value);
+      if (err) return toast(err);
+      try {
+        const res = await api('/api/auth/changer', { actuel: form.actuel.value, nouveau: form.nouveau.value });
+        form.reset(); toast(res.message);
+      } catch (ex) { toast(ex.message); }
+      return;
     }
     if (form.matches('[data-profil]')) {
       e.preventDefault();
@@ -281,6 +465,28 @@
     const open = e.target.closest('[data-open-projet]');
     if (open) return openProjet(+open.dataset.openProjet);
     if (e.target.closest('[data-new-projet]')) return newProjet({});
+    if (e.target.closest('[data-new-client]')) return newClient();
+    const ac = e.target.closest('[data-acces]');
+    if (ac) {
+      const c = cache.clients.clients.find((x) => x.id === +ac.dataset.id);
+      const action = ac.dataset.acces;
+      const question = action === 'desactiver'
+        ? `Désactiver l’accès de ${c.email} ? Le client sera déconnecté et ne pourra plus se connecter.`
+        : c.acces_premium ? `Créer un nouveau mot de passe provisoire pour ${c.email} ? L’ancien ne fonctionnera plus et le client le recevra par email.` : `Donner l’accès premium à ${c.email} ? Ses identifiants lui seront envoyés par email.`;
+      if (!confirm(question)) return;
+      try {
+        const res = await api('/api/admin/client/acces', { id: c.id, action });
+        if (res.mot_de_passe_provisoire) showProvisoire(res.email, res.mot_de_passe_provisoire, res.email_envoye);
+        else toast(res.message);
+        await views.clients.load(); await render();
+      } catch (err) { toast(err.message); }
+      return;
+    }
+    const cp = e.target.closest('[data-copy]');
+    if (cp) {
+      try { await navigator.clipboard.writeText(cp.dataset.copy); toast('Copié'); } catch { toast('Sélectionnez le mot de passe pour le copier'); }
+      return;
+    }
     const dp = e.target.closest('[data-demande-projet]');
     if (dp) {
       const d = cache.demandes.demandes.find((x) => x.id === +dp.dataset.demandeProjet);
@@ -308,7 +514,7 @@
         <div><label class="field-label" for="n-service">Service</label><select class="select" id="n-service" name="service"><option value="">Aucun</option>${SERVICES.map((s) => `<option${s === pre.titre ? ' selected' : ''}>${h(s)}</option>`).join('')}</select></div>
         <input type="hidden" name="contact_id" value="${h(pre.contact_id || '')}">
         <button class="btn btn-primary" type="submit">Créer le projet</button>
-        <p class="form-note">Le client pourra suivre ce projet dans son espace en se connectant avec cet email.</p>
+        <p class="form-note">Si le client a un accès premium, il verra ce projet dans son espace client.</p>
       </form>`);
     $('[data-projet-creer]').addEventListener('submit', async (ev) => {
       ev.preventDefault();
@@ -318,6 +524,44 @@
         closeModal(); toast('Projet créé'); await load();
         if (location.hash !== '#projets') location.hash = '#projets'; else await render();
         openProjet(res.id);
+      } catch (err) { toast(err.message); }
+    });
+  }
+
+  function showProvisoire(email, mdp, envoye) {
+    openModal(`<h2 id="modal-title">Accès premium prêt</h2>
+      ${envoye
+        ? `<p class="form-msg ok">Les identifiants ont été envoyés à <strong>${h(email)}</strong>, avec l’invitation à changer le mot de passe dans son espace.</p>`
+        : `<p class="form-msg err">L’email n’a pas pu être envoyé : transmettez ces identifiants au client vous-même.</p>`}
+      <p><strong>Identifiant :</strong> ${h(email)}</p>
+      <div class="temp-pwd"><code>${h(mdp)}</code><button class="btn btn-outline btn-sm" type="button" data-copy="${h(mdp)}">Copier</button></div>
+      <p class="form-note">Mot de passe provisoire, valable 7 jours. À sa première connexion, le client devra choisir son mot de passe personnel ; le provisoire cessera alors de fonctionner. Il ne sera plus affiché ici.</p>
+      <button class="btn btn-primary" type="button" data-modal-close>Fermer</button>`);
+    $$('[data-modal-close]', modal).forEach((b) => b.addEventListener('click', closeModal));
+  }
+
+  function newClient() {
+    openModal(`<h2 id="modal-title">Nouveau client premium</h2>
+      <form class="form-grid" data-client-creer>
+        <div class="two">
+          <div><label class="field-label" for="k-email">Email du client</label><input class="input" id="k-email" name="email" type="email" required></div>
+          <div><label class="field-label" for="k-nom">Nom complet</label><input class="input" id="k-nom" name="nom"></div>
+        </div>
+        <div class="two">
+          <div><label class="field-label" for="k-ent">Entreprise</label><input class="input" id="k-ent" name="entreprise"></div>
+          <div><label class="field-label" for="k-tel">Téléphone</label><input class="input" id="k-tel" name="telephone"></div>
+        </div>
+        <label class="consent consent-light"><input type="checkbox" name="envoyer" checked> Envoyer ses identifiants au client par email, avec l’invitation à changer son mot de passe</label>
+        <button class="btn btn-primary" type="submit">Créer l’accès</button>
+      </form>`);
+    $('[data-client-creer]').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const f = ev.currentTarget;
+      try {
+        const res = await api('/api/admin/client/creer', { email: f.email.value.trim(), nom: f.nom.value, entreprise: f.entreprise.value, telephone: f.telephone.value, envoyer_email: f.envoyer.checked });
+        showProvisoire(res.email, res.mot_de_passe_provisoire, res.email_envoye);
+        await load();
+        if (location.hash !== '#clients') location.hash = '#clients'; else { await views.clients.load(); await render(); }
       } catch (err) { toast(err.message); }
     });
   }
@@ -371,13 +615,17 @@
   }
 
   /* ---------- Démarrage ---------- */
-  load().then(() => {
-    loginEl.hidden = true;
-    appEl.hidden = false;
-    setUser();
-    return render();
-  }).catch((e) => {
-    if (e.status === 401 || e.status === 403) { loginEl.hidden = false; appEl.hidden = true; }
-    else { loginEl.hidden = false; const m = $('[data-login-msg]'); m.hidden = false; m.className = 'form-msg err'; m.textContent = e.message; }
-  });
+  function start() {
+    return load().then(() => {
+      screen('app');
+      setUser();
+      return render();
+    }).catch((e) => {
+      if (e.code === 'mdp_a_changer') return showChange();
+      if (e.code === 'totp_a_configurer') return showTotp();
+      screen('login');
+      if (e.status !== 401 && e.status !== 403) say($('[data-login-msg]'), false, e.message);
+    });
+  }
+  start();
 })();

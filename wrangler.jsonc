@@ -26,5 +26,26 @@
     // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
   },
   "ai": { "binding": "AI" },
-  "observability": { "enabled": true }
+  // Nettoyage des données chaque nuit à 3 h 17 (UTC) : durées de conservation RGPD
+  "triggers": { "crons": ["17 3 * * *"] },
+  "observability": { "enabled": true },
+  // Prévisualisations des PR (npx wrangler preview) : base de test séparée, jamais les données réelles.
+  // Migrations de la base de test : npx wrangler d1 migrations apply renaissance-itech-preview --remote --config wrangler.preview-migrations.jsonc
+  "previews": {
+    "vars": {
+      "SITE_URL": "https://www.renaissance-itech.com",
+      "NOTIFY_EMAIL": "contact@renaissance-itech.com",
+      "SENDER_EMAIL": "contact@renaissance-itech.com",
+      "BREVO_LIST_ID": "2",
+      "ADMIN_EMAILS": "contact@renaissance-itech.com,renaissanceitech@gmail.com"
+    },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "renaissance-itech-preview",
+        "database_id": "e26539a5-03ff-4f6c-92a0-bd61fa6d7aec"
+      }
+    ],
+    "ai": { "binding": "AI" }
+  }
 }

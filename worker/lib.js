@@ -4,12 +4,16 @@ export const TZ = 'Europe/Paris';
 export const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$/;
 
 export class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 export const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
+  headers: {
+    'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
+    ...headers,
+  },
 });
 
 export const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -17,13 +21,20 @@ export const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 // Adresse du site telle que le visiteur l'utilise (domaine officiel ou adresse de test)
 export const siteUrl = (env, request) => new URL(request.url).origin;
 
+// Anti-falsification (CSRF) : une action ne peut venir que d'une page de ce site.
+// Les navigateurs envoient toujours l'en-tête Origin (ou Sec-Fetch-Site) sur ces requêtes.
 export function checkOrigin(request) {
   const origin = request.headers.get('Origin');
-  if (origin && new URL(origin).host !== new URL(request.url).host) throw new HttpError(403, 'Origine non autorisée.');
+  const site = request.headers.get('Sec-Fetch-Site');
+  let ok = false;
+  if (origin) { try { ok = new URL(origin).host === new URL(request.url).host; } catch { ok = false; } }
+  else ok = site === 'same-origin';
+  if (!ok) throw new HttpError(403, 'Origine non autorisée.');
 }
 
 export async function readJson(request) {
   checkOrigin(request);
+  if (!(request.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) throw new HttpError(415, 'Format de requête non accepté.');
   try { return await request.json(); } catch { throw new HttpError(400, 'Requête invalide.'); }
 }
 
@@ -96,7 +107,7 @@ export const emailLayout = (title, body) => `<div style="font-family:Arial,sans-
     <p style="margin-top:24px;font-size:13px;color:#666">Renaissance iTech · contact@renaissance-itech.com · +33 7 75 70 08 67</p>
   </div></div>`;
 
-export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="${esc(href)}" style="display:inline-block;background:#FF6B1A;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:6px">${esc(label)}</a></p>`;
+export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="${esc(href)}" style="display:inline-block;background:#C2410C;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:6px">${esc(label)}</a></p>`;
 
 export const emailTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:8px 0;color:#666;width:130px;vertical-align:top">${esc(k)}</td><td style="padding:8px 0">${esc(v).replace(/\n/g, '<br>')}</td></tr>`).join('')}</table>`;
 

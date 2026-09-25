@@ -1,0 +1,14 @@
+{
+  // Uniquement pour appliquer les migrations à la base de test des prévisualisations :
+  // npx wrangler d1 migrations apply renaissance-itech-preview --remote --config wrangler.preview-migrations.jsonc
+  "name": "renaissance-itech-preview-migrations",
+  "compatibility_date": "2026-09-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "renaissance-itech-preview",
+      "database_id": "e26539a5-03ff-4f6c-92a0-bd61fa6d7aec",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
