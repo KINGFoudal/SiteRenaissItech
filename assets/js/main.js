@@ -394,7 +394,7 @@
     'error-callback': (code) => {
       let p = el.nextElementSibling;
       if (!p?.matches('.ts-err')) { p = document.createElement('p'); p.className = 'form-msg err ts-err'; el.after(p); }
-      p.textContent = `La vérification anti-robot n’a pas pu se charger (code ${code}). Rechargez la page ; si le problème continue, écrivez-nous à contact@renaissance-itech.com.`;
+      p.innerHTML = `La vérification anti-robot n’a pas pu aboutir (code ${String(code).replace(/[^\w-]/g, '')}). Un bloqueur ou un réglage de confidentialité de votre navigateur peut en être la cause. Vous pouvez aussi nous écrire à <a href="mailto:contact@renaissance-itech.com">contact@renaissance-itech.com</a> ou sur <a href="https://wa.me/33775700867" target="_blank" rel="noopener">WhatsApp</a>.`;
       return true;
     },
   });
