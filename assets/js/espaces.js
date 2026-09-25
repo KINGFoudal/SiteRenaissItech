@@ -54,7 +54,7 @@
 
   // Options communes : message clair (avec le code d'erreur Cloudflare) si la vérification ne peut pas s'afficher
   const tsOptions = (el, cle) => ({
-    sitekey: cle, theme: 'light', language: 'fr',
+    sitekey: cle, theme: 'light', language: 'fr', size: 'flexible',
     callback: () => { el.nextElementSibling?.matches('.ts-err') && el.nextElementSibling.remove(); },
     'error-callback': (code) => {
       let p = el.nextElementSibling;

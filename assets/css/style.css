@@ -989,5 +989,5 @@ body:not(.home) .site-footer a:hover { color: #FF8A47; }
 .codes-secours code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--bg-soft); border: 1px dashed #CFCFCF; text-align: center; font-weight: 700; letter-spacing: .08em; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 .inline-form .input { max-width: 200px; }
-.ts { min-height: 65px; }
+.ts { min-height: 65px; width: 100%; max-width: 100%; overflow: hidden; }
 .ts[hidden] { display: none; }
