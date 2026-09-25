@@ -5,8 +5,8 @@ date: 2026-09-02
 auteur: "Renaissance iTech"
 categorie: "Entrepreneuriat"
 tags: ["automatisation", "croissance", "organisation"]
-image: "/assets/img/b-entrepreneuriat.svg"
-image_alt: "Silhouette d'un entrepreneur devant une courbe de croissance"
+image: "/assets/img/blog/automatisation-couverture.svg"
+image_alt: "Tâches répétitives (factures, emails, relances) automatisées qui alimentent la croissance d'une PME"
 brouillon: false
 references:
   - titre: "The state of AI in 2025: Agents, innovation, and transformation"
@@ -26,11 +26,15 @@ Les outils d'automatisation et d'IA se sont démocratisés : beaucoup d'entrepri
 
 ## La méthode en 4 étapes
 
+![Schéma de la méthode en quatre étapes : cartographier, choisir, mettre en place, étendre](/assets/img/blog/methode-automatisation-4-etapes.svg "La méthode en 4 étapes.")
+
 ### 1. Cartographier les tâches répétitives
 
 Pendant une semaine, notez les tâches effectuées plus de trois fois. Estimez le temps passé sur chacune.
 
 ### 2. Choisir la bonne première cible
+
+![Matrice croisant fréquence et simplicité d'automatisation pour choisir la première tâche à automatiser](/assets/img/blog/matrice-priorisation-automatisation.svg "Commencez par les tâches fréquentes et simples.")
 
 Privilégiez une tâche fréquente, simple et sans risque : par exemple, l'envoi automatique d'un email de confirmation après une demande de devis.
 

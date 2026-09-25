@@ -1,4 +1,4 @@
-/* Renaissance iTech — interactions du site */
+/* Renaissance iTech : interactions du site */
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -128,6 +128,9 @@
   /* ---------- Prise de rendez-vous ---------- */
   const booking = $('[data-booking]');
   if (booking) {
+    const svcParam = new URLSearchParams(location.search).get('service');
+    const svcSelect = $('[data-service]', booking);
+    if (svcParam && [...svcSelect.options].some((o) => o.value === svcParam)) svcSelect.value = svcParam;
     const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     const DOW = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -383,8 +386,13 @@
   /* ---------- Formulaire de contact ---------- */
   const contact = $('[data-contact-form]');
   if (contact) {
-    // Pré-remplissage depuis la boutique : contact.html?produit=...
-    const produit = new URLSearchParams(location.search).get('produit');
+    // Pré-remplissage : /contact?sujet=... (services) ou ?produit=... (boutique)
+    const params = new URLSearchParams(location.search);
+    const produit = params.get('produit');
+    const sujet = params.get('sujet');
+    if (sujet && [...contact.elements.sujet.options].some((o) => o.value === sujet)) contact.elements.sujet.value = sujet;
+    const programme = params.get('programme');
+    if (programme) contact.elements.message.value = `Bonjour, nous souhaitons former nos équipes avec le programme « ${programme} ». Nombre de participants : \nDates souhaitées : \nContexte : `;
     if (produit) {
       contact.elements.sujet.value = 'Demande sur un produit';
       contact.elements.message.value = `Bonjour, je suis intéressé(e) par « ${produit} ». Pouvez-vous m’envoyer un devis ?`;
@@ -414,4 +422,137 @@
       }
     });
   }
+  /* ---------- Rendez-vous confirmé : récapitulatif et ajout à l'agenda ---------- */
+  const recap = $('[data-rdv-recap]');
+  if (recap) {
+    const q = new URLSearchParams(location.search);
+    const service = q.get('service') || '', date = q.get('date') || '', heure = q.get('heure') || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(heure)) {
+      const [y, m, d] = date.split('-').map(Number);
+      const [h, mi] = heure.split(':').map(Number);
+      const jour = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      recap.innerHTML = [['Service', service], ['Date', jour], ['Heure', `${heure} (heure de Paris)`], ['Durée', '30 minutes'], ['Lieu', 'Google Meet']]
+        .filter(([, v]) => v).map(([k, v]) => `<div><span>${k}</span><strong>${esc(v)}</strong></div>`).join('');
+      recap.hidden = false;
+      // Heure locale de Paris vers UTC (gère l'heure d'été)
+      const guess = Date.UTC(y, m - 1, d, h, mi);
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
+      const utc = new Date(guess - (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - guess));
+      const end = new Date(utc.getTime() + 30 * 60000);
+      const f = (dt) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      const title = `Rendez-vous Renaissance iTech${service ? ` (${service})` : ''}`;
+      const details = 'Échange de 30 minutes en visioconférence. Le lien Google Meet vous est envoyé par email. Contact : contact@renaissance-itech.com, +33 7 75 70 08 67';
+      const add = $('[data-cal-add]');
+      $('[data-cal-google]', add).href = `https://calendar.google.com/calendar/render?${new URLSearchParams({ action: 'TEMPLATE', text: title, dates: `${f(utc)}/${f(end)}`, details, location: 'Google Meet' })}`;
+      $('[data-cal-outlook]', add).href = `https://outlook.live.com/calendar/0/deeplink/compose?${new URLSearchParams({ subject: title, startdt: utc.toISOString(), enddt: end.toISOString(), body: details, location: 'Google Meet', path: '/calendar/action/compose', rru: 'addevent' })}`;
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Renaissance iTech//RDV//FR', 'BEGIN:VEVENT', `UID:${f(utc)}-${Math.random().toString(36).slice(2)}@renaissance-itech.com`,
+        `DTSTAMP:${f(new Date())}`, `DTSTART:${f(utc)}`, `DTEND:${f(end)}`, `SUMMARY:${title}`, `DESCRIPTION:${details.replace(/,/g, '\\,')}`, 'LOCATION:Google Meet', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      $('[data-cal-ics]', add).href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      add.hidden = false;
+    }
+  }
+
+  /* ---------- Désinscription de la newsletter ---------- */
+  const unsub = $('[data-unsub]');
+  if (unsub) {
+    const msg = $('[data-unsub-msg]');
+    const email = unsub.elements.email;
+    const pre = new URLSearchParams(location.search).get('email');
+    if (pre) email.value = pre;
+    unsub.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const say = (ok, text) => { msg.hidden = false; msg.className = `form-msg ${ok ? 'ok' : 'err'}`; msg.textContent = text; };
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())) return say(false, 'Merci d’indiquer un email valide.');
+      const btn = $('button', unsub);
+      btn.disabled = true;
+      try {
+        const res = await api('/api/newsletter/desinscription', { email: email.value.trim() });
+        unsub.hidden = true;
+        say(true, res.message);
+      } catch (ex) {
+        say(false, netError(ex));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  /* ---------- Services : un seul service affiché à la fois ---------- */
+  const explorer = $('[data-svc-explorer]');
+  if (explorer) {
+    const items = $$('[data-svc]', explorer);
+    const activate = (item) => items.forEach((it) => {
+      const on = it === item;
+      it.classList.toggle('is-active', on);
+      $('.svc-tab', it).setAttribute('aria-expanded', String(on));
+    });
+    const hover = matchMedia('(hover: hover) and (min-width: 921px)');
+    items.forEach((it) => {
+      const tab = $('.svc-tab', it);
+      tab.addEventListener('mouseenter', () => { if (hover.matches) activate(it); });
+      tab.addEventListener('focus', () => activate(it));
+      tab.addEventListener('click', () => {
+        activate(it);
+        if (!hover.matches) it.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    });
+    const target = location.hash && document.getElementById(location.hash.slice(1));
+    const fromHash = target && items.find((it) => it.contains(target));
+    if (fromHash) { activate(fromHash); requestAnimationFrame(() => fromHash.scrollIntoView({ block: 'start' })); }
+  }
+
+  /* ---------- Accueil : démo animée de l'assistant IA privé ---------- */
+  const demo = $('[data-ai-demo]');
+  if (demo && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const SCENES = [
+      { q: 'Quel délai de paiement prévoit notre contrat cadre ?', doc: 'contrat',
+        a: 'D’après le contrat cadre 2025 (article 7.2), le paiement intervient à 45 jours fin de mois à compter de la date de facture.', src: 'Contrat_cadre_2025.pdf · p. 6' },
+      { q: 'Qui valide un achat de plus de 5 000 € ?', doc: 'achats',
+        a: 'La procédure achats (section 3) impose la validation du responsable de service puis de la direction financière, avec trois devis comparatifs.', src: 'Procédure_achats.docx · §3' },
+      { q: 'Combien de jours de télétravail sont autorisés ?', doc: 'rh',
+        a: 'Jusqu’à 2 jours par semaine, après accord du manager et signature de l’avenant au contrat de travail.', src: 'Note_RH_teletravail.pdf · p. 2' },
+    ];
+    const chat = $('[data-ai-chat]', demo);
+    const input = $('.ai-input', demo);
+    const typing = $('[data-ai-typing]', demo);
+    const placeholder = typing.textContent;
+    const fileIcon = $('.ai-src svg', demo)?.outerHTML || '';
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const el = (cls, html) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; return d; };
+    let visible = true;
+    new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(demo);
+    const whenVisible = async () => { while (!visible || document.hidden) await wait(400); };
+
+    const play = async (s) => {
+      await whenVisible();
+      chat.replaceChildren();
+      input.classList.add('is-typing');
+      typing.textContent = '';
+      for (const ch of s.q) { typing.textContent += ch; await wait(38); }
+      await wait(450);
+      input.classList.remove('is-typing');
+      typing.textContent = placeholder;
+      chat.append(el('ai-msg ai-q', `<span>${s.q}</span>`));
+      const search = el('ai-search', '<i></i> Recherche dans vos documents…');
+      chat.append(search);
+      const li = $(`[data-doc="${s.doc}"]`, demo);
+      await wait(700);
+      li.classList.add('is-reading');
+      await wait(1100);
+      search.remove();
+      const ans = el('ai-msg ai-a', '<span></span>');
+      chat.append(ans);
+      const span = $('span', ans);
+      for (const w of s.a.split(' ')) { span.textContent += (span.textContent ? ' ' : '') + w; await wait(55); }
+      ans.insertAdjacentHTML('beforeend', `<em class="ai-src">${fileIcon} ${s.src}</em>`);
+      li.classList.remove('is-reading');
+      await wait(4200);
+    };
+    (async () => {
+      await wait(1200);
+      for (let n = 0; ; n = (n + 1) % SCENES.length) await play(SCENES[n]);
+    })();
+  }
+
 })();

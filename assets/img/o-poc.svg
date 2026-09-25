@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none" role="img" aria-label="PoC IA sur vos données">
+<defs><radialGradient id="g" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".5"/><stop offset=".55" stop-color="#FF6B1A" stop-opacity=".1"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></radialGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17171C"/><stop offset="1" stop-color="#07070A"/></linearGradient>
+<pattern id="d" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#fff" fill-opacity=".06"/></pattern></defs>
+<rect width="400" height="260" fill="url(#bg)"/><rect width="400" height="260" fill="url(#d)"/><circle cx="200" cy="130" r="120" fill="url(#g)"/>
+<rect x="150" y="80" width="100" height="100" rx="24" fill="#1C1C22" stroke="#3A3A44" stroke-width="2"/>
+<g transform="translate(170 100) scale(2.5)" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1Z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2Z"/><path d="M9 12H4s.6-3 2-4c1.6-1.1 5 0 5 0M12 15v5s3-.6 4-2c1.1-1.6 0-5 0-5"/></g>
+</svg>

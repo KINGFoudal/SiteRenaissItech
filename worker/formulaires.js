@@ -9,7 +9,7 @@ import {
 export const SLOTS = ['09:00', '10:00', '11:00', '14:00', '15:00'];
 const RDV_MINUTES = 30;
 export const SERVICES = ['IA privée & souveraine', 'Automatisation IA', 'Formation IA des équipes', 'Cybersécurité', 'Conseil & stratégie', 'Création web & développement', 'SEO & référencement'];
-const SUJETS = ['IA privée & souveraine', 'Automatisation IA', 'Formation IA des équipes', 'Cybersécurité', 'Création web & développement', 'Demande sur un produit', 'Autre demande'];
+const SUJETS = [...SERVICES, 'Demande sur un produit', 'Autre demande'];
 
 function ics({ id, start, service, site }) {
   const fmt = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
