@@ -240,6 +240,7 @@
           service, date: ymd(state.date), heure: state.slot, nom, email,
           telephone: form.tel.value.trim(), message: form.message.value.trim(), website: form.website.value,
         });
+        if (res.redirect) { location.href = res.redirect; return; }
         $('[data-confirm-msg]', booking).textContent = res.message;
         $('[data-recap]', booking).replaceChildren(...[
           ['Service', service],
@@ -269,71 +270,114 @@
     show(2);
   }
 
-  /* ---------- Espace client : connexion, démonstration ---------- */
-  const loginScreen = $('[data-login]');
-  if (loginScreen) {
-    const demo = new URLSearchParams(location.search).has('demo');
-    loginScreen.hidden = demo;
-    $('[data-app]').hidden = !demo;
-    $('[data-login-form]').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const msg = $('[data-login-msg]');
-      msg.hidden = false;
-      msg.textContent = 'Identifiants non reconnus. Vos accès vous sont envoyés au lancement de votre projet. Besoin d’aide ? contact@renaissance-itech.com';
-    });
-  }
+  /* ---------- Assistant IA (bulle présente sur toutes les pages) ---------- */
+  const store = {
+    get(k, d) { try { return JSON.parse(sessionStorage.getItem(k)) ?? d; } catch { return d; } },
+    set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
+  };
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Mise en forme légère des réponses : listes, liens vers les pages du site et emails
+  const formatAnswer = (t) => {
+    const lines = esc(t).split(/\n+/);
+    let html = ''; let inList = false;
+    for (const line of lines) {
+      const item = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+      if (item) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${item[1]}</li>`; continue; }
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line.trim()) html += `<p>${line}</p>`;
+    }
+    if (inList) html += '</ul>';
+    return html
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[\s(])(\/(?:rendez-vous|contact|services|formations|boutique|blog|a-propos|espace-client)\b)/g, '$1<a href="$2">$2</a>')
+      .replace(/([\w.+-]+@[\w-]+\.[\w.]+)/g, '<a href="mailto:$1">$1</a>');
+  };
 
-  /* ---------- Espace client ---------- */
-  const views = $$('[data-view]');
-  if (views.length) {
-    const titleEl = $('[data-view-title]');
-    const sidebar = $('[data-sidebar]');
-    const links = $$('.side-nav [data-view-link]');
-    const open = (key) => {
-      if (!views.some((v) => v.dataset.view === key)) key = 'dashboard';
-      views.forEach((v) => { v.hidden = v.dataset.view !== key; });
-      links.forEach((l) => l.classList.toggle('is-active', l.dataset.viewLink === key));
-      const active = links.find((l) => l.dataset.viewLink === key);
-      if (active && titleEl) titleEl.textContent = active.textContent.trim();
-      sidebar?.classList.remove('is-open');
-    };
-    window.addEventListener('hashchange', () => open(location.hash.slice(1)));
-    open(location.hash.slice(1));
-    $('[data-app-burger]')?.addEventListener('click', () => sidebar.classList.toggle('is-open'));
-  }
-  $$('[data-demo-form]').forEach((f) => f.addEventListener('submit', (e) => { e.preventDefault(); toast('Modifications enregistrées'); }));
+  if (!document.body.classList.contains('app-page')) {
+    const widget = document.createElement('div');
+    widget.className = 'assistant';
+    widget.innerHTML = `
+      <button class="assistant-fab" type="button" aria-expanded="false" aria-controls="assistant-panel" data-assistant-toggle>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9h8M8 13h5"/></svg>
+        <span>Une question ?</span>
+      </button>
+      <section class="assistant-panel" id="assistant-panel" role="dialog" aria-label="Assistant Renaissance iTech" hidden>
+        <header class="assistant-head">
+          <span class="assistant-av" aria-hidden="true">IA</span>
+          <div><strong>Assistant Renaissance iTech</strong><span class="online">En ligne · répond en quelques secondes</span></div>
+          <button class="assistant-close" type="button" aria-label="Fermer l’assistant" data-assistant-toggle>×</button>
+        </header>
+        <div class="assistant-body" data-assistant-body aria-live="polite"></div>
+        <div class="assistant-chips" data-assistant-chips>
+          <button type="button">Qu’est-ce que l’IA privée ?</button>
+          <button type="button">Quelles formations pour mon équipe IT ?</button>
+          <button type="button">Comment démarrer un PoC ?</button>
+        </div>
+        <form class="assistant-form" data-assistant-form>
+          <label class="sr-only" for="assistant-q">Votre question</label>
+          <input class="input" id="assistant-q" maxlength="600" placeholder="Posez votre question…" autocomplete="off">
+          <button class="send-btn" type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+        </form>
+        <p class="assistant-note">Réponses générées par IA, à titre indicatif. Ne partagez pas de données sensibles. <a href="/mentions-legales#confidentialite">Confidentialité</a></p>
+      </section>`;
+    document.body.append(widget);
 
-  /* ---------- Tuteur IA (démo) ---------- */
-  const chatForm = $('[data-chat-form]');
-  if (chatForm) {
-    const body = $('[data-chat-body]');
-    const input = $('input', chatForm);
-    const add = (who, text) => {
-      const msg = document.createElement('div');
-      msg.className = `msg ${who}`;
-      if (who === 'bot') msg.innerHTML = '<img class="bot-av" src="assets/img/bot.svg" alt="">';
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      msg.append(bubble);
-      body.append(msg);
+    const panel = $('.assistant-panel', widget);
+    const body = $('[data-assistant-body]', widget);
+    const form = $('[data-assistant-form]', widget);
+    const input = $('input', form);
+    const chips = $('[data-assistant-chips]', widget);
+    const conv = store.get('rit-assistant-id', null) || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    store.set('rit-assistant-id', conv);
+    let history = store.get('rit-assistant', []);
+
+    const bubble = (role, html) => {
+      const el = document.createElement('div');
+      el.className = `assistant-msg ${role}`;
+      el.innerHTML = html;
+      body.append(el);
       body.scrollTop = body.scrollHeight;
-      return bubble;
+      return el;
     };
-    chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const q = input.value.trim();
+    const renderAll = () => {
+      body.innerHTML = '';
+      bubble('bot', '<p>Bonjour ! Je suis l’assistant de Renaissance iTech. Posez-moi vos questions sur l’IA privée, nos services ou nos formations.</p>');
+      history.forEach((m) => bubble(m.role === 'user' ? 'user' : 'bot', m.role === 'user' ? `<p>${esc(m.content)}</p>` : formatAnswer(m.content)));
+      chips.hidden = history.length > 0;
+    };
+    const toggle = (open) => {
+      panel.hidden = !open;
+      widget.classList.toggle('is-open', open);
+      $('.assistant-fab', widget).setAttribute('aria-expanded', String(open));
+      if (open) { renderAll(); input.focus(); }
+    };
+    $$('[data-assistant-toggle]', widget).forEach((b) => b.addEventListener('click', () => toggle(panel.hidden)));
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) toggle(false); });
+
+    const ask = async (q) => {
       if (!q) return;
-      input.value = '';
-      add('user', q);
-      const typing = add('bot', '');
-      typing.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
-      setTimeout(() => {
-        typing.textContent = 'Bonne question ! Le tuteur IA sera bientôt connecté pour vous répondre en détail. En attendant, consultez les ressources recommandées à droite.';
+      chips.hidden = true;
+      history.push({ role: 'user', content: q });
+      bubble('user', `<p>${esc(q)}</p>`);
+      const typing = bubble('bot', '<span class="typing"><span></span><span></span><span></span></span>');
+      form.querySelector('button').disabled = true;
+      try {
+        const res = await api('/api/assistant', { conversation: conv, messages: history.slice(-8), page: location.pathname });
+        typing.innerHTML = formatAnswer(res.reponse);
+        history.push({ role: 'assistant', content: res.reponse });
+      } catch (err) {
+        typing.innerHTML = `<p>${esc(netError(err))}</p>`;
+        history.pop();
+      } finally {
+        form.querySelector('button').disabled = false;
+        history = history.slice(-20);
+        store.set('rit-assistant', history);
         body.scrollTop = body.scrollHeight;
-      }, 900);
-    });
-    body.scrollTop = body.scrollHeight;
+      }
+    };
+    form.addEventListener('submit', (e) => { e.preventDefault(); const q = input.value.trim(); input.value = ''; ask(q); });
+    chips.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) ask(b.textContent); });
+    $$('[data-open-assistant]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); toggle(true); }));
   }
 
   /* ---------- Formulaire de contact ---------- */
@@ -359,8 +403,9 @@
         const res = await api('/api/contact', {
           nom: f.nom.value.trim(), email: f.email.value.trim(), sujet: f.sujet.value, message: f.message.value.trim(), website: f.website.value,
         });
-        say(true, res.message);
         contact.reset();
+        if (res.redirect) { location.href = res.redirect; return; }
+        say(true, res.message);
       } catch (ex) {
         say(false, netError(ex));
       } finally {
