@@ -20,8 +20,9 @@
   "vars": {
     "SITE_URL": "https://www.renaissance-itech.com",
     "NOTIFY_EMAIL": "contact@renaissance-itech.com",
-    "SENDER_EMAIL": "contact@renaissance-itech.com"
-    // BREVO_API_KEY (secret), BREVO_LIST_ID, BREVO_DOI_TEMPLATE_ID : à renseigner dans Cloudflare (voir NEWSLETTER.md)
+    "SENDER_EMAIL": "contact@renaissance-itech.com",
+    "BREVO_LIST_ID": "2"
+    // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
   },
   "observability": { "enabled": true }
 }
