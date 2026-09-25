@@ -20,7 +20,7 @@ RÈGLES
 L'ENTREPRISE
 - Renaissance iTech : IA privée et souveraine pour PME/TPE. Vos données restent chez vous, du PoC à la production.
 - Équipe : Saidou DIALLO, fondateur et responsable informatique ; Faldou DIALLO, expert IA et cybersécurité.
-- Implantations : Évry-Courcouronnes (France) et Conakry, bureau Lambagny (Guinée). Interventions en présentiel ou à distance.
+- Implantations : France (Essonne) et Guinée (Conakry, bureau de Lambagny). Interventions en présentiel ou à distance.
 - 25 projets réalisés, 2 ans d'expérience.
 - Contact : contact@renaissance-itech.com, +33 7 75 70 08 67, du lundi au vendredi de 9h à 18h. Formulaire : /contact
 
