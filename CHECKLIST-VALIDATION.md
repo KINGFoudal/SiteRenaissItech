@@ -32,7 +32,8 @@
 - ✅ **Anti-spam** : champ piège, contrôle de l’origine, 5 envois maximum par heure et par visiteur
 - ✅ Tables créées dans votre base Cloudflare `renaissance-itech-db`
 - ✅ Testé de bout en bout dans un vrai navigateur avec le serveur Cloudflare local
-- ⬜ **Vous** : compte Brevo + clé API (voir `NEWSLETTER.md`). Sans elle, les demandes sont bien **enregistrées** mais **aucun email n’est envoyé**
+- ✅ Compte Brevo créé, domaine renaissance-itech.com authentifié (DKIM, DMARC), clé API ajoutée dans Cloudflare
+- ✅ Réception des emails sur contact@renaissance-itech.com (routage Cloudflare vers Gmail)
 - ⬜ **Vous** : pour chaque rendez-vous, créer la réunion Google Meet et envoyer le lien au client (l’email de notification le rappelle)
 
 ## Étape 4 — Blog et newsletter
@@ -40,7 +41,8 @@
 - ✅ Blog : article à la une, recherche, filtres, temps de lecture, sommaire, sources numérotées, partage, articles liés, flux RSS
 - ✅ Publication par fichier Markdown avec métadonnées vérifiées (`PUBLIER-UN-ARTICLE.md`)
 - ✅ Formulaire newsletter + consentement RGPD + double opt-in possible
-- ⬜ **Vous** : liste Brevo « Newsletter » (+ modèle de confirmation) → variables dans Cloudflare
+- ✅ Liste Brevo n°2 reliée au site
+- ⬜ (Facultatif) modèle de confirmation double opt-in dans Brevo
 - ⬜ **Vous** : remplacer les 3 articles d’exemple par vos propres articles (ou me les demander)
 
 ## Étape 5 — Référencement, sécurité, conformité
@@ -59,11 +61,12 @@
 ## Étape 6 — Mise en ligne
 
 - ✅ Configuration Cloudflare vérifiée (`wrangler deploy --dry-run`) : site + API + base de données
-- ⬜ **Vous** : fusionner la pull request sur GitHub
-- ⬜ **Vous** : Cloudflare → Workers & Pages → `renaissance-itech` → Paramètres → Build → connecter `KINGFoudal/SiteRenaissItech` (branche `main`)
+- ✅ Pull request fusionnée sur `main`
+- ✅ Worker `renaissance-itech` relié à `KINGFoudal/SiteRenaissItech` (branche `main`), mise en ligne automatique
   - Commande de build : `npm ci && npm run build`
   - Commande de déploiement : `npx wrangler d1 migrations apply renaissance-itech-db --remote && npx wrangler deploy`
-- ⬜ **Vous** : ajouter les variables Brevo (voir `NEWSLETTER.md`)
+- ✅ Variables Brevo en place
+- ⬜ **Vous** : déplacer le domaine renaissance-itech.com de l’ancien projet Pages `renaissance-itech-depll` vers le Worker `renaissance-itech`
 - ⬜ **Claude** : vérifier le site en ligne page par page, puis envoyer un vrai message et un vrai rendez-vous de test
 
 ## Étape 7 — Évolutions (après le lancement)
