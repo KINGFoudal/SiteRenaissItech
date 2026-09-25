@@ -1,0 +1,28 @@
+{
+  // Déploiement Cloudflare du site : fichiers statiques + API (contact, rendez-vous, newsletter)
+  "name": "renaissance-itech",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "renaissance-itech-db",
+      "database_id": "bb5883ef-436c-44fd-8396-50e01920167f",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "SITE_URL": "https://www.renaissance-itech.com",
+    "NOTIFY_EMAIL": "contact@renaissance-itech.com",
+    "SENDER_EMAIL": "contact@renaissance-itech.com",
+    "BREVO_LIST_ID": "2"
+    // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
+  },
+  "observability": { "enabled": true }
+}

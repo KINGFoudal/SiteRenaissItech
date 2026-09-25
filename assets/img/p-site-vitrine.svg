@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none" preserveAspectRatio="xMidYMid slice">
+<defs>
+<radialGradient id="g" cx="70%" cy="30%" r="60%"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".55"/><stop offset=".5" stop-color="#FF6B1A" stop-opacity=".12"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></radialGradient>
+<radialGradient id="p" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#6D3BFF" stop-opacity=".35"/><stop offset="1" stop-color="#6D3BFF" stop-opacity="0"/></radialGradient>
+<radialGradient id="b" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#1E90FF" stop-opacity=".45"/><stop offset="1" stop-color="#1E90FF" stop-opacity="0"/></radialGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15151A"/><stop offset="1" stop-color="#07070A"/></linearGradient>
+</defs>
+<rect width="400" height="260" fill="url(#bg)"/>
+<rect width="400" height="260" fill="url(#g)"/>
+<g transform="translate(60 40)"><rect width="280" height="190" rx="6" fill="#1A1A1F" stroke="#2C2C33"/><rect width="280" height="14" rx="6" fill="#23232A"/><circle cx="10" cy="7" r="2.5" fill="#FF5F57"/><circle cx="19" cy="7" r="2.5" fill="#FEBC2E"/><circle cx="28" cy="7" r="2.5" fill="#28C840"/>
+<rect x="14" y="26" width="120" height="12" rx="3" fill="#EEE"/><rect x="14" y="44" width="90" height="12" rx="3" fill="#FF6B1A"/>
+<rect x="14" y="66" width="110" height="5" rx="2" fill="#666"/><rect x="14" y="76" width="96" height="5" rx="2" fill="#666"/>
+<rect x="14" y="92" width="54" height="16" rx="3" fill="#FF6B1A"/><rect x="74" y="92" width="54" height="16" rx="3" stroke="#666"/>
+<rect x="150" y="26" width="116" height="84" rx="4" fill="#0E0E12"/><circle cx="208" cy="68" r="28" fill="url(#g)"/><path d="M180 96l18-20 14 12 12-16 22 24Z" fill="#FF6B1A" fill-opacity=".7"/>
+<g fill="#26262D"><rect x="14" y="124" width="78" height="52" rx="4"/><rect x="100" y="124" width="78" height="52" rx="4"/><rect x="186" y="124" width="80" height="52" rx="4"/></g>
+<g fill="#FF6B1A"><rect x="22" y="134" width="14" height="14" rx="3"/><rect x="108" y="134" width="14" height="14" rx="3"/><rect x="194" y="134" width="14" height="14" rx="3"/></g>
+<g fill="#555"><rect x="22" y="156" width="54" height="4" rx="2"/><rect x="108" y="156" width="54" height="4" rx="2"/><rect x="194" y="156" width="54" height="4" rx="2"/></g></g>
+</svg>

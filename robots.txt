@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /espace-client.html
+
+Sitemap: https://www.renaissance-itech.com/sitemap.xml

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none" preserveAspectRatio="xMidYMid slice">
+<defs>
+<radialGradient id="g" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".55"/><stop offset=".5" stop-color="#FF6B1A" stop-opacity=".12"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></radialGradient>
+<radialGradient id="p" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#6D3BFF" stop-opacity=".35"/><stop offset="1" stop-color="#6D3BFF" stop-opacity="0"/></radialGradient>
+<radialGradient id="b" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#1E90FF" stop-opacity=".45"/><stop offset="1" stop-color="#1E90FF" stop-opacity="0"/></radialGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15151A"/><stop offset="1" stop-color="#07070A"/></linearGradient>
+</defs>
+<rect width="400" height="260" fill="url(#bg)"/>
+<rect width="400" height="260" fill="url(#g)"/>
+
+<rect width="400" height="260" fill="url(#p)"/>
+<g transform="translate(200 130)">
+<path d="M0-80 70-40v80L0 80-70 40v-80Z" fill="#17131F" stroke="#8B5CF6" stroke-width="2"/>
+<path d="M0-60 52-30v60L0 60-52 30v-60Z" fill="none" stroke="#FF6B1A" stroke-width="1.5" opacity=".7"/>
+<text x="0" y="12" text-anchor="middle" font-family="monospace" font-size="38" font-weight="700" fill="#FF6B1A">&lt;/&gt;</text>
+</g>
+</svg>

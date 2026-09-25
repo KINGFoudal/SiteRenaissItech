@@ -1,0 +1,18 @@
+# Fichiers à ne pas publier sur le site
+.git
+.github
+.gitignore
+.assetsignore
+node_modules
+content
+scripts
+worker
+wrangler.jsonc
+package.json
+package-lock.json
+README.md
+PUBLIER-UN-ARTICLE.md
+NEWSLETTER.md
+migrations
+.wrangler
+CHECKLIST-VALIDATION.md
