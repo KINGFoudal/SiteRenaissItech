@@ -746,7 +746,7 @@ small.muted { display: inline-block; font-size: 12.5px; }
 .ai-top { display: flex; align-items: center; gap: 10px; padding: .8em 1.1em; border-bottom: 1px solid rgba(255, 255, 255, .08); background: #161617; }
 .ai-dots { display: flex; gap: 5px; }
 .ai-dots i { width: 8px; height: 8px; border-radius: 50%; background: #3A3A3A; }
-.ai-dots i:first-child { background: #FF6B1A; }
+.ai-dots i:first-child { background: var(--orange); }
 .ai-title { font-weight: 700; }
 .ai-secure { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: .25em .7em; border-radius: 999px; background: rgba(34, 197, 94, .12); color: #4ADE80; font-size: .9em; font-weight: 600; }
 .ai-secure svg { width: 1.1em; height: 1.1em; }
@@ -948,3 +948,16 @@ small.muted { display: inline-block; font-size: 12.5px; }
   .done-card { padding: 32px 20px; }
   .unsub-form { flex-direction: column; }
 }
+
+/* ---------- Contraste (accessibilité WCAG AA) ----------
+   Pages claires : orange plus soutenu (5,2:1 avec le blanc) pour les boutons et les textes.
+   Accueil sombre : orange vif d'origine. Zones sombres des pages claires : orange vif pour les textes. */
+body:not(.home) { --orange: #C2410C; --orange-dark: #9A3412; }
+body:not(.home) .site-footer .logo-text span,
+body:not(.home) .sidebar .logo-text span,
+body:not(.home) .mission .eyebrow,
+body:not(.home) .newsletter .eyebrow,
+body:not(.home) .mission strong,
+body:not(.home) .band .accent { color: #FF6B1A; }
+body:not(.home) .site-footer a:hover { color: #FF8A47; }
+.prog-dur { color: #9A3412; }
