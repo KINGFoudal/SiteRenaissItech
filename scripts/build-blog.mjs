@@ -32,14 +32,14 @@ const CATEGORIES = {
 
 // Appel à l'action adapté à la catégorie de l'article
 const CTA = {
-  ia: ['Envie d’automatiser votre entreprise ?', 'Nous identifions avec vous les tâches à confier à l’IA, et nous les mettons en place.'],
+  ia: ['Une IA privée sur vos données ?', 'Nous déployons des assistants IA hébergés chez vous et formons vos équipes, du PoC à la production.'],
   web: ['Un projet de site web ?', 'Site vitrine, e-commerce ou application : parlons de votre projet.'],
   entrepreneuriat: ['Prêt à passer à la vitesse supérieure ?', 'Audit digital et stratégie sur-mesure pour accélérer votre croissance.'],
-  cyber: ['Votre site est-il bien protégé ?', 'Audit de sécurité, maintenance et surveillance de votre site.'],
+  cyber: ['Votre site est-il bien protégé ?', 'Audit de sécurité, durcissement et sécurisation de vos usages de l’IA.'],
   design: ['Besoin d’une identité qui marque ?', 'Maquettes, interfaces et identité visuelle pour votre marque.'],
 };
 
-const PAGES = ['index.html', 'services.html', 'rendez-vous.html', 'boutique.html', 'formations.html', 'blog.html', 'contact.html', 'a-propos.html', 'mentions-legales.html'];
+const PAGES = ['index.html', 'services.html', 'formations.html', 'rendez-vous.html', 'boutique.html', 'blog.html', 'contact.html', 'a-propos.html', 'mentions-legales.html', 'cookies.html', 'plan-du-site.html'];
 
 /* ---------------------------------------------------------------- utilitaires */
 
@@ -102,6 +102,11 @@ function parseArticle(file) {
   else if (a.image.startsWith('/') && !existsSync(join(ROOT, a.image))) fail(file, `image introuvable : ${a.image}`);
   if (a.image && !a.imageAlt) fail(file, '« image_alt » est obligatoire (description de l’image pour l’accessibilité).');
   if (!a.body.trim()) fail(file, 'l’article est vide.');
+  // Images et schémas du texte : description (alt) obligatoire pour l'accessibilité et le référencement
+  for (const [, alt, src] of a.body.matchAll(/!\[([^\]]*)\]\(\s*<?([^)\s>]+)/g)) {
+    if (alt.trim().length < 10) fail(file, `l’image ${src} doit avoir une description d’au moins 10 caractères : ![description](${src})`);
+    if (src.startsWith('/') && !existsSync(join(ROOT, src))) fail(file, `image introuvable : ${src}`);
+  }
 
   if (!Array.isArray(a.references)) fail(file, '« references » doit être une liste.');
   else a.references.forEach((r, n) => {
@@ -144,7 +149,7 @@ function renderBody(a) {
         return `<a href="${esc(href)}"${title ? ` title="${esc(title)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}>${text}</a>`;
       },
       image({ href, title, text }) {
-        return `<figure><img src="${esc(href)}" alt="${esc(text)}" loading="lazy">${title ? `<figcaption>${esc(title)}</figcaption>` : ''}</figure>`;
+        return `<figure><img src="${esc(href)}" alt="${esc(text)}" loading="lazy" decoding="async">${title ? `<figcaption>${esc(title)}</figcaption>` : ''}</figure>`;
       },
     },
   });
@@ -178,7 +183,7 @@ const NAV = [['/', 'Accueil'], ['/services', 'Services'], ['/formations', 'Forma
 
 const header = () => `<header class="site-header">
     <div class="container">
-      <a class="logo" href="/" aria-label="Renaissance iTech — accueil">
+      <a class="logo" href="/" aria-label="Renaissance iTech, retour à l’accueil">
         <img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34">
         <span class="logo-text">Renaissance<span>iTech</span></span>
       </a>
@@ -248,35 +253,38 @@ const page = ({ title, desc, canonical, head = '', body, type = 'website', image
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="logo" href="/" aria-label="Renaissance iTech — accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
-          <p>Agence digitale &amp; IA : sites web, automatisation, cybersécurité et formations pour faire grandir votre entreprise.</p>
+          <a class="logo" href="/" aria-label="Renaissance iTech, retour à l’accueil"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+          <p>IA privée &amp; souveraine pour les PME et TPE : assistants IA sur vos données, automatisation, formation et cybersécurité. En France et en Guinée.</p>
           <a class="btn btn-primary btn-sm" href="/rendez-vous">Prendre rendez-vous</a>
         </div>
         <nav aria-label="Services">
           <h2>Services</h2>
-          <a href="/services">Création de sites web</a>
-          <a href="/services">Automatisation IA</a>
-          <a href="/services">Cybersécurité</a>
-          <a href="/services">SEO &amp; Référencement</a>
+          <a href="/services#ia-privee">IA privée &amp; souveraine</a>
+          <a href="/services#automatisation">Automatisation IA</a>
+          <a href="/formations">Formation IA des équipes</a>
+          <a href="/services#cybersecurite">Cybersécurité</a>
+          <a href="/services">Tous nos services</a>
         </nav>
         <nav aria-label="Ressources">
           <h2>Ressources</h2>
           <a href="/blog">Blog</a>
-          <a href="/formations">Formations</a>
           <a href="/boutique">Boutique</a>
           <a href="/a-propos">À propos</a>
+          <a href="/espace-client">Espace client</a>
+          <a href="/plan-du-site">Plan du site</a>
         </nav>
         <div>
           <h2>Contact</h2>
           <a href="mailto:contact@renaissance-itech.com">contact@renaissance-itech.com</a>
           <a href="tel:+33775700867">+33 7 75 70 08 67</a>
-          <span>Lun - Ven : 9h - 18h</span>
+          <span>Du lundi au vendredi, 9h à 18h</span>
+          <span>Évry-Courcouronnes · Conakry</span>
           <a href="/contact">Formulaire de contact →</a>
         </div>
       </div>
       <div class="footer-bottom">
         <span>© <span data-year>2026</span> Renaissance iTech. Tous droits réservés.</span>
-        <span><a href="/mentions-legales">Mentions légales</a> · <a href="/mentions-legales#confidentialite">Confidentialité</a> · <a href="/rss.xml">RSS</a></span>
+        <span><a href="/mentions-legales">Mentions légales</a> · <a href="/mentions-legales#confidentialite">Confidentialité</a> · <a href="/cookies">Cookies</a> · <a href="/rss.xml">RSS</a></span>
       </div>
     </div>
   </footer>
@@ -311,7 +319,7 @@ function listingPage(articles) {
         <div>
           <span class="eyebrow">Blog</span>
           <h1 class="page-title">Conseils, actualités et tendances</h1>
-          <p class="page-lead">IA, développement web, cybersécurité, entrepreneuriat : des conseils concrets par l’équipe Renaissance iTech.</p>
+          <p class="page-lead">IA privée, automatisation, cybersécurité : des conseils concrets pour les PME et TPE, par l’équipe Renaissance iTech.</p>
         </div>
         <div class="blog-search">
           <label class="sr-only" for="blog-q">Rechercher un article</label>
@@ -345,8 +353,8 @@ function listingPage(articles) {
     </div>
   </main>`;
   return page({
-    title: 'Blog — Conseils, actualités et tendances digitales | Renaissance iTech',
-    desc: 'Conseils, actualités et tendances : IA, développement web, entrepreneuriat, cybersécurité et design par l’équipe Renaissance iTech.',
+    title: 'Blog : IA privée, cybersécurité et transformation numérique | Renaissance iTech',
+    desc: 'IA privée, automatisation, cybersécurité et transformation numérique : des conseils concrets pour les PME et TPE, par l’équipe Renaissance iTech.',
     canonical: `${SITE}/blog`,
     body,
     head: `<script type="application/ld+json">${JSON.stringify({
@@ -415,7 +423,7 @@ function articlePage(a, articles) {
           ${a.references.length ? `<section class="references" aria-labelledby="refs">
             <h2 id="refs">Sources et références</h2>
             <ol>
-              ${a.references.map((r, n) => `<li id="ref-${n + 1}"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.titre)}</a> — ${esc(r.source)}${r.date ? `, ${esc(r.date)}` : ''}. <a class="ref-back" href="#cite-${n + 1}" aria-label="Retour au texte">↩</a></li>`).join('\n              ')}
+              ${a.references.map((r, n) => `<li id="ref-${n + 1}"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.titre)}</a>, ${esc(r.source)}${r.date ? `, ${esc(r.date)}` : ''}. <a class="ref-back" href="#cite-${n + 1}" aria-label="Retour au texte">↩</a></li>`).join('\n              ')}
             </ol>
           </section>` : ''}
 
@@ -423,7 +431,7 @@ function articlePage(a, articles) {
 
           <div class="author-box">
             <img src="/assets/img/logo-mark.svg" alt="" width="48" height="48">
-            <div><strong>${esc(a.author)}</strong><p>Agence digitale &amp; IA. Nous accompagnons les entreprises dans leur transformation digitale : sites web, automatisation, cybersécurité et formation.</p></div>
+            <div><strong>${esc(a.author)}</strong><p>IA privée &amp; souveraine pour PME et TPE. Nous déployons des assistants IA sur vos données, automatisons vos processus et formons vos équipes, en France et en Guinée.</p></div>
           </div>
         </article>
 

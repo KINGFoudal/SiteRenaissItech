@@ -5,8 +5,8 @@ date: 2026-09-12
 auteur: "Renaissance iTech"
 categorie: "IA"
 tags: ["intelligence artificielle", "PME", "productivité"]
-image: "/assets/img/b-ia.svg"
-image_alt: "Illustration d'une main humaine et d'une main robotique qui se rejoignent"
+image: "/assets/img/blog/ia-entreprise-couverture.svg"
+image_alt: "Assistant IA privé affichant une réponse qui cite un document interne de l'entreprise"
 a_la_une: true
 brouillon: false
 references:
@@ -41,12 +41,16 @@ L'IA aide à rédiger des premiers jets de contenus, à segmenter une base clien
 
 ## Comment démarrer sans se tromper
 
+![Schéma des quatre étapes pour démarrer un projet IA : cas d'usage, PoC, mesure, déploiement](/assets/img/blog/demarrer-ia-4-etapes.svg "Démarrer petit, mesurer, puis déployer.")
+
 1. **Partir d'un problème, pas d'un outil.** Listez les tâches qui prennent le plus de temps à votre équipe.
 2. **Tester sur un périmètre réduit.** Un seul processus, quelques semaines, un indicateur clair (temps gagné, délai de réponse).
 3. **Former les équipes.** Un outil mal compris est un outil abandonné.
 4. **Mesurer, puis étendre.** Ce qui fonctionne est déployé ; le reste est ajusté ou arrêté.
 
 ## Un cadre à respecter
+
+![Schéma comparant le trajet des données avec une IA publique, vers les serveurs d'un tiers, et avec une IA privée qui reste dans le périmètre de l'entreprise](/assets/img/blog/ia-publique-vs-privee.svg "IA publique ou IA privée : où vont vos données ?")
 
 L'Union européenne encadre désormais l'IA avec un règlement dédié, qui classe les usages selon leur niveau de risque [2]. Si vous traitez des données personnelles, les recommandations de la CNIL restent la référence pour rester conforme [3].
 

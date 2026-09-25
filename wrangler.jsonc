@@ -1,5 +1,5 @@
 {
-  // Déploiement Cloudflare du site : fichiers statiques + API (contact, rendez-vous, newsletter)
+  // Déploiement Cloudflare du site : fichiers statiques + API (formulaires, espaces client et admin, assistant IA)
   "name": "renaissance-itech",
   "main": "worker/index.js",
   "compatibility_date": "2026-09-01",
@@ -21,8 +21,10 @@
     "SITE_URL": "https://www.renaissance-itech.com",
     "NOTIFY_EMAIL": "contact@renaissance-itech.com",
     "SENDER_EMAIL": "contact@renaissance-itech.com",
-    "BREVO_LIST_ID": "2"
+    "BREVO_LIST_ID": "2",
+    "ADMIN_EMAILS": "contact@renaissance-itech.com,renaissanceitech@gmail.com"
     // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
   },
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
 }

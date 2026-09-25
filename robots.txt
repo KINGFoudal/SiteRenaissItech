@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /espace-client.html
+Disallow: /espace-client
+Disallow: /admin
+Disallow: /connexion
+Disallow: /api/
 
 Sitemap: https://www.renaissance-itech.com/sitemap.xml

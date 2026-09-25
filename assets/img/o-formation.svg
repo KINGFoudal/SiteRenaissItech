@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" fill="none" role="img" aria-label="Formation IA des équipes">
+<defs><radialGradient id="g" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".5"/><stop offset=".55" stop-color="#FF6B1A" stop-opacity=".1"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></radialGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17171C"/><stop offset="1" stop-color="#07070A"/></linearGradient>
+<pattern id="d" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#fff" fill-opacity=".06"/></pattern></defs>
+<rect width="400" height="260" fill="url(#bg)"/><rect width="400" height="260" fill="url(#d)"/><circle cx="200" cy="130" r="120" fill="url(#g)"/>
+<rect x="150" y="80" width="100" height="100" rx="24" fill="#1C1C22" stroke="#3A3A44" stroke-width="2"/>
+<g transform="translate(170 100) scale(2.5)" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/><path d="M22 10v6"/></g>
+</svg>

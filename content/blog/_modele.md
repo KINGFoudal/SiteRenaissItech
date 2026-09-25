@@ -1,6 +1,6 @@
 ---
 # ─────────────────────────────────────────────────────────────
-# MODÈLE D'ARTICLE — copiez ce fichier, renommez-le (ex. : mon-article.md)
+# MODÈLE D'ARTICLE : copiez ce fichier, renommez-le (ex. : mon-article.md)
 # Le nom du fichier devient l'adresse : renaissance-itech.com/blog/mon-article/
 # Les fichiers qui commencent par « _ » ne sont jamais publiés.
 # ─────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ date: 2026-01-31              # date de publication (AAAA-MM-JJ)
 auteur: "Renaissance iTech"
 categorie: "IA"               # IA | Développement Web | Entrepreneuriat | Cybersécurité | Design
 tags: ["exemple", "mot-clé"]
-image: "/assets/img/b-ia.svg" # image de couverture (idéalement JPG/WebP 1200×630 dans /assets/img/blog/)
+image: "/assets/img/blog/ia-entreprise-couverture.svg" # couverture 1200×630 (JPG, WebP ou SVG) dans /assets/img/blog/
 image_alt: "Description de l'image pour l'accessibilité"
 a_la_une: false               # true = article mis en avant en haut du blog
 brouillon: true               # true = non publié ; passez à false pour publier
