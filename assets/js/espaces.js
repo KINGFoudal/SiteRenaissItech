@@ -49,6 +49,31 @@
     t.textContent = show ? 'Masquer' : 'Afficher';
     t.setAttribute('aria-pressed', String(show));
   });
+
+  /* ---------- Anti-robot Cloudflare Turnstile (actif si une clé est configurée) ---------- */
+  const tsCle = fetch('/api/config').then((r) => r.json()).then((c) => c.turnstile).catch(() => null);
+  let tsScript;
+  const initTurnstile = async () => {
+    const cle = await tsCle;
+    if (!cle) return;
+    tsScript ||= new Promise((ok) => {
+      window.ritTsOk = ok;
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ritTsOk';
+      sc.async = true;
+      document.head.append(sc);
+    });
+    await tsScript;
+    $$('[data-turnstile]').forEach((el) => {
+      if (el.dataset.widget) return;
+      el.hidden = false;
+      el.dataset.widget = window.turnstile.render(el, { sitekey: cle, theme: 'light', language: 'fr' });
+    });
+  };
+  const tsJeton = (form) => { const el = $('[data-turnstile]', form); return el?.dataset.widget && window.turnstile ? window.turnstile.getResponse(el.dataset.widget) : undefined; };
+  const tsReset = (form) => { const el = $('[data-turnstile]', form); if (el?.dataset.widget && window.turnstile) window.turnstile.reset(el.dataset.widget); };
+  initTurnstile();
+
   const say = (el, ok, text) => { el.hidden = false; el.className = `form-msg ${ok ? 'ok' : 'err'}`; el.textContent = text; };
   const REGLE = /^(?=.*[a-zA-Z])(?=.*\d).{10,128}$/;
   const checkNouveau = (nouveau, confirmation) => {
@@ -86,9 +111,9 @@
         const f = e.currentTarget; const msg = $('[data-mdp-msg]');
         $('button', f).disabled = true;
         try {
-          const res = await api('/api/auth/mot-de-passe-oublie', { email: f.email.value.trim(), espace });
-          say(msg, true, res.message); f.reset();
-        } catch (ex) { say(msg, false, ex.message); } finally { $('button', f).disabled = false; }
+          const res = await api('/api/auth/mot-de-passe-oublie', { email: f.email.value.trim(), espace, turnstile: tsJeton(f) });
+          say(msg, true, res.message); f.reset(); tsReset(f);
+        } catch (ex) { say(msg, false, ex.message); tsReset(f); } finally { $('button', f).disabled = false; }
       });
     }
     return;
@@ -107,7 +132,9 @@
 
   /* ---------- Connexion / déconnexion ---------- */
   const changeEl = $('[data-change]');
-  const screen = (name) => { loginEl.hidden = name !== 'login'; changeEl.hidden = name !== 'change'; appEl.hidden = name !== 'app'; };
+  const ecrans = { login: loginEl, change: changeEl, app: appEl, '2fa': $('[data-2fa]'), totp: $('[data-totp]') };
+  const screen = (name) => Object.entries(ecrans).forEach(([k, el]) => { if (el) el.hidden = k !== name; });
+  let defi = null;
   // Mot de passe provisoire à remplacer : on le garde en mémoire juste après la connexion
   const showChange = (provisoire) => {
     const f = $('[data-change-form]');
@@ -124,15 +151,57 @@
     if (!f.email.value.trim() || !f.mot_de_passe.value) return say(msg, false, 'Indiquez votre email et votre mot de passe.');
     btn.disabled = true;
     try {
-      const res = await api('/api/auth/connexion', { email: f.email.value.trim(), mot_de_passe: f.mot_de_passe.value, espace: f.dataset.espace });
+      const res = await api('/api/auth/connexion', { email: f.email.value.trim(), mot_de_passe: f.mot_de_passe.value, espace: f.dataset.espace, turnstile: tsJeton(f) });
       msg.hidden = true;
-      if (res.doit_changer) showChange(f.mot_de_passe.value);
+      if (res.etape === '2fa') { defi = res.defi; screen('2fa'); $('#t-code').focus(); }
+      else if (res.doit_changer) showChange(f.mot_de_passe.value);
       else start();
       f.mot_de_passe.value = '';
     } catch (err) {
       say(msg, false, err.message);
-    } finally { btn.disabled = false; }
+    } finally { btn.disabled = false; tsReset(f); }
   });
+
+  /* ---------- Administration : double authentification ---------- */
+  $('[data-2fa-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget; const msg = $('[data-2fa-msg]');
+    try {
+      const res = await api('/api/auth/2fa', { defi, code: f.code.value.trim() });
+      f.reset(); msg.hidden = true; defi = null;
+      if (res.message) toast(res.message);
+      start();
+    } catch (err) {
+      if (err.code === 'defi_expire') { screen('login'); say($('[data-login-msg]'), false, err.message); return; }
+      say(msg, false, err.message); f.code.select();
+    }
+  });
+  async function showTotp() {
+    screen('totp');
+    $('[data-totp-etape1]').hidden = false; $('[data-totp-etape2]').hidden = true;
+    try {
+      const { secret, uri } = await api('/api/auth/totp/initier', {});
+      const qr = window.qrcode(0, 'M'); qr.addData(uri); qr.make();
+      $('[data-totp-qr]').innerHTML = qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+      $('[data-totp-secret]').textContent = secret.match(/.{1,4}/g).join(' ');
+      $('#a-code').focus();
+    } catch (err) { say($('[data-totp-msg]'), false, err.message); }
+  }
+  const afficherCodes = (codes) => {
+    $('[data-codes]').innerHTML = codes.map((c) => `<li><code>${h(c)}</code></li>`).join('');
+    $('[data-codes-copier]').onclick = async () => { try { await navigator.clipboard.writeText(codes.join('\n')); toast('Codes copiés'); } catch { toast('Sélectionnez les codes pour les copier'); } };
+  };
+  $('[data-totp-form]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    try {
+      const res = await api('/api/auth/totp/activer', { code: f.code.value.trim() });
+      f.reset();
+      afficherCodes(res.codes_secours);
+      $('[data-totp-etape1]').hidden = true; $('[data-totp-etape2]').hidden = false;
+    } catch (err) { say($('[data-totp-msg]'), false, err.message); }
+  });
+  $('[data-totp-fin]')?.addEventListener('click', () => start());
   $('[data-change-form]').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
@@ -286,8 +355,21 @@
         <p class="form-note">Seuls les clients premium peuvent se connecter à l’espace client, avec leur email et un mot de passe. À la création, un mot de passe provisoire est généré automatiquement et envoyé au client par email ; il devra le remplacer par le sien à sa première connexion.</p>
         ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Entreprise</th><th>Accès espace client</th><th>Projets</th><th>RDV</th><th>Dernière connexion</th><th></th></tr></thead><tbody>${rows.map((c) => `<tr><td><strong>${h(c.nom || '')}</strong><br><a href="mailto:${h(c.email)}"><small>${h(c.email)}</small></a>${c.telephone ? `<br><small class="muted">${h(c.telephone)}</small>` : ''}</td><td>${h(c.entreprise || '')}</td><td>${acces(c)}</td><td>${+c.nb_projets}</td><td>${+c.nb_rdv}</td><td><small>${c.derniere_connexion ? h(fmtSql(c.derniere_connexion)) : 'Jamais'}</small></td><td class="actions">${actions(c)}</td></tr>`).join('')}</tbody></table></div>` : empty('Aucun client pour le moment.')}</div>`;
     } },
-    compte: { title: 'Mon compte', render() {
-      return `<div class="card panel"><h2>Administrateur</h2><p class="muted">Connecté en tant que <strong>${h(data.moi || '')}</strong>.</p></div>${formMotDePasse()}`;
+    compte: { title: 'Mon compte', async load() { cache.totp = await api('/api/auth/totp/statut'); }, render() {
+      const t = cache.totp || {};
+      return `<div class="card panel"><h2>Administrateur</h2><p class="muted">Connecté en tant que <strong>${h(data.moi || '')}</strong>. Par sécurité, la session administrateur dure 12 heures.</p></div>
+        <div class="card panel"><h2>Double authentification</h2>
+          <p>${t.actif ? '<span class="status status-premium">Activée</span>' : '<span class="status status-provisoire">Non activée</span>'} · Codes de secours restants : <strong>${+t.codes_restants || 0}</strong></p>
+          <form class="settings-form" data-codes-form>
+            <p class="form-note">Générer de nouveaux codes de secours annule les anciens. Saisissez le code à 6 chiffres de votre application pour confirmer.</p>
+            <div class="inline-form"><label class="sr-only" for="r-code">Code à 6 chiffres</label><input class="input input-code" id="r-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required><button class="btn btn-outline" type="submit">Nouveaux codes de secours</button></div>
+            <ul class="codes-secours" data-codes-new hidden></ul>
+          </form>
+        </div>${formMotDePasse()}`;
+    } },
+    journal: { title: 'Journal', async load() { await adminList('journal', '/api/admin/journal'); }, render() {
+      const rows = cache.journal?.journal || [];
+      return `<div class="card panel"><p class="form-note">Les actions réalisées dans l’administration (conservées 12 mois) : connexions, accès clients, projets, rendez-vous, messages.</p>${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Administrateur</th><th>Action</th><th>Concerne</th></tr></thead><tbody>${rows.map((r) => `<tr><td><small>${h(fmtSql(r.cree_le))}</small></td><td><small>${h(r.email)}</small></td><td><strong>${h(r.action)}</strong>${r.details ? `<br><small class="muted">${h(r.details)}</small>` : ''}</td><td><small>${h(r.cible || '')}</small></td></tr>`).join('')}</tbody></table></div>` : empty('Aucune action enregistrée.')}</div>`;
     } },
     assistant: { title: 'Assistant IA', async load() { await adminList('assistant', '/api/admin/assistant'); }, render() {
       const rows = cache.assistant?.messages || [];
@@ -318,6 +400,7 @@
 
   function handleError(e) {
     if (e.code === 'mdp_a_changer') return showChange();
+    if (e.code === 'totp_a_configurer') return showTotp();
     if (e.status === 401 || e.status === 403) return screen('login');
     root.innerHTML = `<div class="card panel"><p class="form-msg err">${h(e.message)}</p></div>`;
   }
@@ -336,6 +419,18 @@
         await api('/api/client/message', { projet_id: +form.dataset.reply, contenu });
         await load(); await render(); toast('Message envoyé à l’équipe');
       } catch (err) { toast(err.message); form.querySelector('button').disabled = false; }
+    }
+    if (form.matches('[data-codes-form]')) {
+      e.preventDefault();
+      try {
+        const res = await api('/api/auth/totp/codes', { code: form.code.value.trim() });
+        form.reset();
+        const ul = $('[data-codes-new]', form);
+        ul.innerHTML = res.codes_secours.map((c) => `<li><code>${h(c)}</code></li>`).join('');
+        ul.hidden = false;
+        toast('Nouveaux codes générés : conservez-les, les anciens ne fonctionnent plus');
+      } catch (ex) { toast(ex.message); }
+      return;
     }
     if (form.matches('[data-mdp-changer]')) {
       e.preventDefault();
@@ -527,6 +622,7 @@
       return render();
     }).catch((e) => {
       if (e.code === 'mdp_a_changer') return showChange();
+      if (e.code === 'totp_a_configurer') return showTotp();
       screen('login');
       if (e.status !== 401 && e.status !== 403) say($('[data-login-msg]'), false, e.message);
     });

@@ -6,6 +6,7 @@ import {
 } from './lib.js';
 import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
+import { journal } from './securite.js';
 
 const STATUTS_PROJET = ['nouveau', 'en_cours', 'en_pause', 'termine', 'annule'];
 const STATUTS_RDV = ['confirme', 'annule', 'termine'];
@@ -95,10 +96,11 @@ export async function adminRendezVous(request, env) {
 }
 
 export async function adminRendezVousStatut(request, env) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   if (!STATUTS_RDV.includes(data.statut)) throw new HttpError(400, 'Statut invalide.');
   await env.DB.prepare('UPDATE rendez_vous SET statut = ? WHERE id = ?').bind(data.statut, int(data.id)).run();
+  await journal(env, request, session.email, 'Statut de rendez-vous modifié', `RDV #${int(data.id)}`, data.statut);
   return json({ ok: true });
 }
 
@@ -121,7 +123,7 @@ export async function adminProjet(request, env) {
 }
 
 export async function adminProjetMaj(request, env) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   const statut = STATUTS_PROJET.includes(data.statut) ? data.statut : null;
   const avancement = Math.max(0, Math.min(100, int(data.avancement) || 0));
@@ -129,11 +131,12 @@ export async function adminProjetMaj(request, env) {
   if (!statut) throw new HttpError(400, 'Statut invalide.');
   await env.DB.prepare("UPDATE projets SET statut = ?, avancement = ?, titre = COALESCE(NULLIF(?, ''), titre), maj_le = datetime('now') WHERE id = ?")
     .bind(statut, avancement, titre, int(data.id)).run();
+  await journal(env, request, session.email, 'Projet mis à jour', `Projet #${int(data.id)}`, `${statut}, ${avancement} %`);
   return json({ ok: true });
 }
 
 export async function adminProjetCreer(request, env) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   const email = clean(data.email, 254).toLowerCase();
   const titre = clean(data.titre, 120);
@@ -145,11 +148,12 @@ export async function adminProjetCreer(request, env) {
   const { meta } = await env.DB.prepare("INSERT INTO projets (client_id, titre, service, statut, origine, contact_id) VALUES (?, ?, ?, 'nouveau', ?, ?)")
     .bind(client.id, titre, service, contactId ? 'contact' : 'admin', contactId).run();
   if (contactId) await env.DB.prepare('UPDATE contacts SET traite = 1 WHERE id = ?').bind(contactId).run();
+  await journal(env, request, session.email, 'Projet créé', email, titre);
   return json({ ok: true, id: meta.last_row_id });
 }
 
 export async function adminMessage(request, env, ctx) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   const contenu = clean(data.contenu, 3000);
   if (contenu.length < 2) throw new HttpError(400, 'Votre message est vide.');
@@ -167,6 +171,7 @@ export async function adminMessage(request, env, ctx) {
       replyTo: notifyEmail(env),
     }));
   }
+  await journal(env, request, session.email, 'Message envoyé au client', projet.email, projet.titre);
   return json({ ok: true });
 }
 
@@ -177,9 +182,10 @@ export async function adminDemandes(request, env) {
 }
 
 export async function adminDemandeTraiter(request, env) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   await env.DB.prepare('UPDATE contacts SET traite = ? WHERE id = ?').bind(data.traite ? 1 : 0, int(data.id)).run();
+  await journal(env, request, session.email, data.traite ? 'Demande marquée traitée' : 'Demande marquée à traiter', `Demande #${int(data.id)}`);
   return json({ ok: true });
 }
 
@@ -231,7 +237,7 @@ async function donnerAcces(env, email) {
 }
 
 export async function adminClientCreer(request, env, ctx) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   const email = clean(data.email, 254).toLowerCase();
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Email du client invalide.');
@@ -241,23 +247,32 @@ export async function adminClientCreer(request, env, ctx) {
   if (clean(data.entreprise, 120)) await env.DB.prepare('UPDATE clients SET entreprise = COALESCE(entreprise, ?) WHERE email = ?').bind(clean(data.entreprise, 120), email).run();
   const provisoire = await donnerAcces(env, email);
   const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email, nom: clean(data.nom, 100), provisoire, nouveau: true });
+  await journal(env, request, session.email, 'Accès premium créé', email, envoye ? 'identifiants envoyés par email' : 'identifiants non envoyés');
   return json({ ok: true, email, mot_de_passe_provisoire: provisoire, email_envoye: Boolean(envoye) });
 }
 
 export async function adminClientAcces(request, env) {
-  await requireSession(request, env, 'admin');
+  const session = await requireSession(request, env, 'admin');
   const data = await readJson(request);
   const client = await env.DB.prepare('SELECT id, email, nom, acces_premium FROM clients WHERE id = ?').bind(int(data.id)).first();
   if (!client) throw new HttpError(404, 'Client introuvable.');
   if (data.action === 'desactiver') {
     await env.DB.prepare('UPDATE clients SET acces_premium = 0 WHERE id = ?').bind(client.id).run();
     await fermerSessions(env, client.email, 'client');
+    await journal(env, request, session.email, 'Accès premium désactivé', client.email);
     return json({ ok: true, message: 'Accès désactivé : le client est déconnecté et ne peut plus se connecter.' });
   }
   if (data.action === 'provisoire') {
     const provisoire = await donnerAcces(env, client.email);
     const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email: client.email, nom: client.nom, provisoire, nouveau: !client.acces_premium });
+    await journal(env, request, session.email, client.acces_premium ? 'Nouveau mot de passe provisoire' : 'Accès premium donné', client.email);
     return json({ ok: true, email: client.email, mot_de_passe_provisoire: provisoire, email_envoye: Boolean(envoye) });
   }
   throw new HttpError(400, 'Action inconnue.');
+}
+
+export async function adminJournal(request, env) {
+  await requireSession(request, env, 'admin');
+  const { results } = await env.DB.prepare('SELECT id, email, action, cible, details, cree_le FROM journal_admin ORDER BY id DESC LIMIT 300').all();
+  return json({ journal: results });
 }

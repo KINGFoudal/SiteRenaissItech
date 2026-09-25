@@ -1,0 +1,6 @@
+# Signaler une faille de sécurité sur renaissance-itech.com
+Contact: mailto:contact@renaissance-itech.com
+Expires: 2027-09-25T00:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://www.renaissance-itech.com/.well-known/security.txt
+Policy: https://www.renaissance-itech.com/mentions-legales

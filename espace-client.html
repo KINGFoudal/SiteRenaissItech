@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=ff4f4ee158">
+  <link rel="stylesheet" href="/assets/css/style.css?v=92e0e60449">
 </head>
 <body class="app-page">
   <main class="login-screen" data-login hidden>
@@ -25,6 +25,7 @@
       <form class="form-grid" data-login-form data-espace="client" novalidate>
         <div><label class="field-label" for="l-email">Adresse email</label><input class="input" id="l-email" name="email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" required></div>
         <div><label class="field-label" for="l-mdp">Mot de passe</label><div class="pwd"><input class="input" id="l-mdp" name="mot_de_passe" type="password" autocomplete="current-password" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="l-mdp" aria-pressed="false">Afficher</button></div></div>
+        <div class="ts" data-turnstile hidden></div>
         <button class="btn btn-primary btn-block" type="submit">Se connecter</button>
         <p class="form-msg" data-login-msg role="status" hidden></p>
       </form>
@@ -85,6 +86,6 @@
     </div>
   </div>
   <div class="toast" role="status" aria-live="polite" data-toast></div>
-  <script src="/assets/js/espaces.js?v=04bf0273bb" defer></script>
+  <script src="/assets/js/espaces.js?v=c6ffe2a42f" defer></script>
 </body>
 </html>

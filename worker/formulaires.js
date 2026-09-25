@@ -1,5 +1,6 @@
 // Formulaire de contact et prise de rendez-vous
 
+import { verifierTurnstile } from './securite.js';
 import {
   HttpError, json, esc, clean, readJson, ipHash, rateLimit, requireDb, EMAIL_RE,
   parisNow, parisToUtc, validDate, frDate, emailLayout, emailButton, emailTable,
@@ -30,6 +31,7 @@ function ics({ id, start, service, site }) {
 
 export async function contact(request, env, ctx) {
   const data = await readJson(request);
+  if (!data.website) await verifierTurnstile(env, request, data.turnstile);
   if (data.website) return json({ ok: true });
 
   const nom = clean(data.nom, 100);
@@ -77,6 +79,7 @@ export async function creneaux(request, env) {
 
 export async function rendezVous(request, env, ctx) {
   const data = await readJson(request);
+  if (!data.website) await verifierTurnstile(env, request, data.turnstile);
   if (data.website) return json({ ok: true });
 
   const service = clean(data.service, 60);

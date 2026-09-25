@@ -16,9 +16,12 @@ import {
   HttpError, json, clean, readJson, ipHash, rateLimit, requireDb, EMAIL_RE, sha256, randomToken,
   getCookie, emailLayout, emailButton, sendEmail, siteUrl,
 } from './lib.js';
+import {
+  verifierTotp, secretTotp, uriTotp, codesSecours, empreinteCode, verifierTurnstile, journal,
+} from './securite.js';
 
 const COOKIE = 'rit_session';
-const SESSION_JOURS = 30;
+const SESSION_HEURES = { client: 30 * 24, admin: 12 }; // clients : 30 jours ; administrateurs : 12 heures
 const LIEN_MINUTES = 30;
 const ITERATIONS = 100000;
 const MAX_ECHECS_EMAIL = 8;   // par adresse, sur 15 minutes
@@ -77,8 +80,8 @@ export function motDePasseProvisoire() {
 async function compte(env, email, role) {
   if (role === 'admin') {
     if (!adminEmails(env).includes(email)) return null;
-    const row = await env.DB.prepare('SELECT email, mot_de_passe, doit_changer_mdp FROM administrateurs WHERE email = ?').bind(email).first();
-    return row || { email, mot_de_passe: null, doit_changer_mdp: 0 };
+    const row = await env.DB.prepare('SELECT email, mot_de_passe, doit_changer_mdp, totp_secret, totp_actif, totp_dernier_pas, codes_secours FROM administrateurs WHERE email = ?').bind(email).first();
+    return row || { email, mot_de_passe: null, doit_changer_mdp: 0, totp_actif: 0 };
   }
   return env.DB.prepare(`SELECT id, email, nom, mot_de_passe, doit_changer_mdp,
       (doit_changer_mdp = 1 AND mdp_maj_le < datetime('now', '-${PROVISOIRE_JOURS} days')) AS provisoire_expire
@@ -102,7 +105,7 @@ export const fermerSessions = (env, email, role, sauf = null) => env.DB.prepare(
 async function ouvrirSession(env, request, email, role, extra = {}) {
   const session = randomToken();
   await env.DB.batch([
-    env.DB.prepare(`INSERT INTO sessions (hash, email, role, expire_le) VALUES (?, ?, ?, datetime('now', ?))`).bind(await sha256(session), email, role, `+${SESSION_JOURS} days`),
+    env.DB.prepare(`INSERT INTO sessions (hash, email, role, expire_le) VALUES (?, ?, ?, datetime('now', ?))`).bind(await sha256(session), email, role, `+${SESSION_HEURES[role]} hours`),
     role === 'admin'
       ? env.DB.prepare("UPDATE administrateurs SET derniere_connexion = datetime('now') WHERE email = ?").bind(email)
       : env.DB.prepare("UPDATE clients SET derniere_connexion = datetime('now') WHERE email = ?").bind(email),
@@ -114,7 +117,7 @@ async function ouvrirSession(env, request, email, role, extra = {}) {
   return json(
     { ok: true, role, redirect: role === 'admin' ? '/admin' : '/espace-client', ...extra },
     200,
-    { 'Set-Cookie': `${COOKIE}=${session}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_JOURS * 86400}${secure}` },
+    { 'Set-Cookie': `${COOKIE}=${session}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_HEURES[role] * 3600}${secure}` },
   );
 }
 
@@ -127,6 +130,7 @@ export async function connexion(request, env) {
   const role = data.espace === 'admin' ? 'admin' : 'client';
   if (!EMAIL_RE.test(email) || !motDePasse) throw new HttpError(400, 'Indiquez votre email et votre mot de passe.');
   requireDb(env);
+  await verifierTurnstile(env, request, data.turnstile);
 
   const ip = await ipHash(request);
   const [parEmail, parIp] = await Promise.all([
@@ -144,7 +148,93 @@ export async function connexion(request, env) {
   if (!ok) throw new HttpError(401, 'Email ou mot de passe incorrect.');
   if (c.provisoire_expire) throw new HttpError(401, `Votre mot de passe provisoire a expiré (validité ${PROVISOIRE_JOURS} jours). Cliquez sur « Mot de passe oublié ? » pour en choisir un nouveau.`);
 
+  if (role === 'admin' && c.totp_actif) {
+    // Mot de passe correct : on demande maintenant le code de l'application d'authentification
+    const defi = randomToken();
+    await env.DB.prepare("INSERT INTO defis_2fa (hash, email, expire_le) VALUES (?, ?, datetime('now', '+5 minutes'))").bind(await sha256(defi), email).run();
+    return json({ ok: true, etape: '2fa', defi });
+  }
+  if (role === 'admin') await journal(env, request, email, 'Connexion (double authentification à configurer)');
   return ouvrirSession(env, request, email, role, { doit_changer: Boolean(c.doit_changer_mdp) });
+}
+
+// Deuxième étape de la connexion administrateur : code à 6 chiffres ou code de secours
+export async function deuxFacteurs(request, env) {
+  const data = await readJson(request);
+  requireDb(env);
+  const hash = await sha256(clean(data.defi, 200));
+  const defi = await env.DB.prepare("SELECT * FROM defis_2fa WHERE hash = ? AND expire_le > datetime('now')").bind(hash).first();
+  if (!defi || defi.essais >= 5) throw new HttpError(401, 'Session de connexion expirée. Saisissez à nouveau votre mot de passe.', 'defi_expire');
+  const c = await compte(env, defi.email, 'admin');
+  if (!c?.totp_actif) throw new HttpError(401, 'Session de connexion expirée.', 'defi_expire');
+
+  const code = clean(data.code, 20);
+  const pas = await verifierTotp(c.totp_secret, code, c.totp_dernier_pas);
+  let parSecours = false;
+  if (pas === null) {
+    const codes = JSON.parse(c.codes_secours || '[]');
+    const e = await empreinteCode(code);
+    if (codes.includes(e)) {
+      parSecours = true;
+      await env.DB.prepare('UPDATE administrateurs SET codes_secours = ? WHERE email = ?').bind(JSON.stringify(codes.filter((x) => x !== e)), c.email).run();
+    }
+  }
+  if (pas === null && !parSecours) {
+    await env.DB.batch([
+      env.DB.prepare('UPDATE defis_2fa SET essais = essais + 1 WHERE hash = ?').bind(hash),
+      env.DB.prepare('INSERT INTO tentatives_connexion (email, ip_hash, reussi) VALUES (?, ?, 0)').bind(c.email, await ipHash(request)),
+    ]);
+    throw new HttpError(401, 'Code incorrect. Vérifiez l’heure de votre téléphone et réessayez.');
+  }
+  await env.DB.prepare('DELETE FROM defis_2fa WHERE hash = ?').bind(hash).run();
+  if (pas !== null) await env.DB.prepare('UPDATE administrateurs SET totp_dernier_pas = ? WHERE email = ?').bind(pas, c.email).run();
+  await journal(env, request, c.email, parSecours ? 'Connexion avec un code de secours' : 'Connexion');
+  const restants = parSecours ? JSON.parse(c.codes_secours || '[]').length - 1 : null;
+  return ouvrirSession(env, request, c.email, 'admin', parSecours ? { message: `Code de secours utilisé. Il vous en reste ${restants}.` } : {});
+}
+
+// Configuration de la double authentification (administrateur connecté)
+export async function totpInitier(request, env) {
+  const s = await requireSession(request, env, 'admin', { autoriserTotp: true });
+  const c = await compte(env, s.email, 'admin');
+  if (c.totp_actif) throw new HttpError(409, 'La double authentification est déjà activée.');
+  const secret = secretTotp();
+  await env.DB.prepare('UPDATE administrateurs SET totp_secret = ? WHERE email = ?').bind(secret, s.email).run();
+  return json({ ok: true, secret, uri: uriTotp(secret, s.email) });
+}
+
+export async function totpActiver(request, env) {
+  const s = await requireSession(request, env, 'admin', { autoriserTotp: true });
+  const data = await readJson(request);
+  const c = await compte(env, s.email, 'admin');
+  if (c.totp_actif) throw new HttpError(409, 'La double authentification est déjà activée.');
+  const pas = await verifierTotp(c.totp_secret, data.code);
+  if (pas === null) throw new HttpError(400, 'Code incorrect. Saisissez le code à 6 chiffres affiché dans l’application.');
+  const codes = codesSecours();
+  await env.DB.prepare('UPDATE administrateurs SET totp_actif = 1, totp_dernier_pas = ?, codes_secours = ? WHERE email = ?')
+    .bind(pas, JSON.stringify(await Promise.all(codes.map(empreinteCode))), s.email).run();
+  await fermerSessions(env, s.email, 'admin', s.hash);
+  await journal(env, request, s.email, 'Double authentification activée');
+  return json({ ok: true, codes_secours: codes });
+}
+
+export async function totpNouveauxCodes(request, env) {
+  const s = await requireSession(request, env, 'admin');
+  const data = await readJson(request);
+  const c = await compte(env, s.email, 'admin');
+  const pas = await verifierTotp(c.totp_secret, data.code, c.totp_dernier_pas);
+  if (pas === null) throw new HttpError(400, 'Code incorrect.');
+  const codes = codesSecours();
+  await env.DB.prepare('UPDATE administrateurs SET totp_dernier_pas = ?, codes_secours = ? WHERE email = ?')
+    .bind(pas, JSON.stringify(await Promise.all(codes.map(empreinteCode))), s.email).run();
+  await journal(env, request, s.email, 'Nouveaux codes de secours générés');
+  return json({ ok: true, codes_secours: codes });
+}
+
+export async function totpStatut(request, env) {
+  const s = await requireSession(request, env, 'admin');
+  const c = await compte(env, s.email, 'admin');
+  return json({ actif: Boolean(c.totp_actif), codes_restants: JSON.parse(c.codes_secours || '[]').length });
 }
 
 export async function motDePasseOublie(request, env, ctx) {
@@ -153,6 +243,7 @@ export async function motDePasseOublie(request, env, ctx) {
   const role = data.espace === 'admin' ? 'admin' : 'client';
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Merci d’indiquer un email valide.');
   requireDb(env);
+  await verifierTurnstile(env, request, data.turnstile);
 
   const ip = await ipHash(request);
   await rateLimit(env, 'jetons_mdp', ip, 5, '-1 hour', 'Trop de demandes. Réessayez dans une heure ou écrivez-nous à contact@renaissance-itech.com.');
@@ -187,18 +278,30 @@ export async function reinitialiser(request, env) {
   await env.DB.prepare('UPDATE jetons_mdp SET utilise = 1 WHERE email = ? AND role = ?').bind(row.email, row.role).run();
   await enregistrerMotDePasse(env, row.email, row.role, data.mot_de_passe);
   await fermerSessions(env, row.email, row.role);
+  if (row.role === 'admin') {
+    await journal(env, request, row.email, 'Mot de passe réinitialisé');
+    // La réinitialisation ne contourne pas la double authentification : connexion complète requise
+    const c = await compte(env, row.email, 'admin');
+    if (c.totp_actif) return json({ ok: true, redirect: '/admin', message: 'Votre mot de passe est enregistré. Connectez-vous avec votre code à 6 chiffres.' });
+  }
   return ouvrirSession(env, request, row.email, row.role, { message: 'Votre mot de passe est enregistré.' });
 }
 
 export async function changer(request, env) {
   const s = await requireSession(request, env, null, { autoriserChangement: true });
   const data = await readJson(request);
+  const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM tentatives_connexion WHERE email = ? AND reussi = 0 AND cree_le > datetime('now', '-15 minutes')").bind(s.email).first();
+  if (echecs.n >= MAX_ECHECS_EMAIL) throw new HttpError(429, 'Trop de tentatives. Réessayez dans 15 minutes.');
   const c = await compte(env, s.email, s.role);
-  if (!c || !(await verifierMotDePasse(String(data.actuel || '').slice(0, 128), c.mot_de_passe))) throw new HttpError(400, 'Le mot de passe actuel est incorrect.');
+  if (!c || !(await verifierMotDePasse(String(data.actuel || '').slice(0, 128), c.mot_de_passe))) {
+    await env.DB.prepare('INSERT INTO tentatives_connexion (email, ip_hash, reussi) VALUES (?, ?, 0)').bind(s.email, await ipHash(request)).run();
+    throw new HttpError(400, 'Le mot de passe actuel est incorrect.');
+  }
   validerMotDePasse(data.nouveau, s.email);
   if (data.nouveau === data.actuel) throw new HttpError(400, 'Choisissez un mot de passe différent de l’actuel.');
   await enregistrerMotDePasse(env, s.email, s.role, data.nouveau);
   await fermerSessions(env, s.email, s.role, s.hash);
+  if (s.role === 'admin') await journal(env, request, s.email, 'Mot de passe modifié');
   return json({ ok: true, message: 'Votre nouveau mot de passe est enregistré.' });
 }
 
@@ -219,7 +322,7 @@ export async function getSession(request, env) {
 }
 
 // Vérifie la session, que le compte a toujours accès, et que le mot de passe provisoire a été changé
-export async function requireSession(request, env, role, { autoriserChangement = false } = {}) {
+export async function requireSession(request, env, role, { autoriserChangement = false, autoriserTotp = false } = {}) {
   const s = await getSession(request, env);
   if (!s) throw new HttpError(401, 'Veuillez vous connecter.');
   if (role && s.role !== role) throw new HttpError(403, 'Accès réservé.');
@@ -229,5 +332,7 @@ export async function requireSession(request, env, role, { autoriserChangement =
     throw new HttpError(401, 'Votre accès n’est plus actif. Contactez-nous.');
   }
   if (c.doit_changer_mdp && !autoriserChangement) throw new HttpError(403, 'Choisissez votre mot de passe personnel pour continuer.', 'mdp_a_changer');
+  // Double authentification obligatoire pour les administrateurs
+  if (s.role === 'admin' && !c.totp_actif && !autoriserTotp && !autoriserChangement) throw new HttpError(403, 'Activez la double authentification pour accéder à l’administration.', 'totp_a_configurer');
   return s;
 }

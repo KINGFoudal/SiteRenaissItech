@@ -9,7 +9,11 @@ export class HttpError extends Error {
 
 export const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
+  headers: {
+    'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
+    ...headers,
+  },
 });
 
 export const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -17,13 +21,20 @@ export const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 // Adresse du site telle que le visiteur l'utilise (domaine officiel ou adresse de test)
 export const siteUrl = (env, request) => new URL(request.url).origin;
 
+// Anti-falsification (CSRF) : une action ne peut venir que d'une page de ce site.
+// Les navigateurs envoient toujours l'en-tête Origin (ou Sec-Fetch-Site) sur ces requêtes.
 export function checkOrigin(request) {
   const origin = request.headers.get('Origin');
-  if (origin && new URL(origin).host !== new URL(request.url).host) throw new HttpError(403, 'Origine non autorisée.');
+  const site = request.headers.get('Sec-Fetch-Site');
+  let ok = false;
+  if (origin) { try { ok = new URL(origin).host === new URL(request.url).host; } catch { ok = false; } }
+  else ok = site === 'same-origin';
+  if (!ok) throw new HttpError(403, 'Origine non autorisée.');
 }
 
 export async function readJson(request) {
   checkOrigin(request);
+  if (!(request.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) throw new HttpError(415, 'Format de requête non accepté.');
   try { return await request.json(); } catch { throw new HttpError(400, 'Requête invalide.'); }
 }
 

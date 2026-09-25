@@ -26,5 +26,7 @@
     // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
   },
   "ai": { "binding": "AI" },
+  // Nettoyage des données chaque nuit à 3 h 17 (UTC) : durées de conservation RGPD
+  "triggers": { "crons": ["17 3 * * *"] },
   "observability": { "enabled": true }
 }

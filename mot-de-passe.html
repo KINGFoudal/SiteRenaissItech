@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=ff4f4ee158">
+  <link rel="stylesheet" href="/assets/css/style.css?v=92e0e60449">
 </head>
 <body class="app-page">
   <main class="login-screen">
@@ -25,7 +25,8 @@
         <p>Indiquez l’adresse email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.</p>
         <form class="form-grid" data-mdp-demande-form novalidate>
           <div><label class="field-label" for="m-email">Adresse email</label><input class="input" id="m-email" name="email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" required></div>
-          <button class="btn btn-primary btn-block" type="submit">Recevoir le lien</button>
+          <div class="ts" data-turnstile hidden></div>
+        <button class="btn btn-primary btn-block" type="submit">Recevoir le lien</button>
           <p class="form-msg" data-mdp-msg role="status" hidden></p>
         </form>
       </div>
@@ -43,6 +44,6 @@
     </div>
   </main>
   <div class="toast" role="status" aria-live="polite" data-toast></div>
-  <script src="/assets/js/espaces.js?v=04bf0273bb" defer></script>
+  <script src="/assets/js/espaces.js?v=c6ffe2a42f" defer></script>
 </body>
 </html>

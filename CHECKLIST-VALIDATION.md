@@ -76,6 +76,11 @@
 - ✅ Assistant IA du site (Workers AI) sur toutes les pages publiques
 - ✅ Espace client réservé aux clients premium : email + mot de passe, accès créé par l’admin (mot de passe provisoire), mot de passe oublié
 - ⬜ **Vous** : première connexion admin via « Mot de passe oublié » sur /admin avec contact@renaissance-itech.com
+- ✅ Double authentification obligatoire pour l’admin (application Google/Microsoft Authenticator + 10 codes de secours), session admin de 12 h
+- ✅ Journal des actions admin, contrôle anti-falsification strict, en-têtes de sécurité, `/.well-known/security.txt`
+- ✅ Nettoyage automatique chaque nuit selon les durées de conservation (RGPD)
+- ⬜ **Vous** : créer le widget Cloudflare Turnstile (anti-robot) et ajouter TURNSTILE_SITE_KEY / TURNSTILE_SECRET
+- ⬜ **Vous** : activer la double authentification sur Cloudflare, GitHub, Brevo et Gmail ; protéger la branche main ; activer DNSSEC
 - ⬜ **Vous** : remplacer les illustrations du blog par de vraies photos si souhaité (dossier `assets/img/blog/`)
 - ⬜ Formations : la page affiche une progression d’exemple (65 %) ; à relier aux comptes clients
 - ⬜ Création automatique des réunions Google Meet
