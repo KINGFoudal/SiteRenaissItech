@@ -38,3 +38,9 @@ Aperçu local : `npm install && npm run build && npm run dev` (pages seules) ou 
 - Admin bloqué sans téléphone ni codes de secours : dans la console D1 de Cloudflare, exécuter
   `UPDATE administrateurs SET totp_actif = 0, totp_secret = NULL WHERE email = '…';` puis se reconnecter pour reconfigurer.
 - Vérification : `node scripts/audit-site.cjs http://localhost:8787` (sur une copie locale uniquement).
+
+## Prévisualisations des PR
+
+Chaque PR est déployée en prévisualisation (`npx wrangler preview`) avec la base de test `renaissance-itech-preview`, séparée de la base réelle (section `previews` de `wrangler.jsonc`).
+Quand une PR ajoute une migration, l'appliquer d'abord à la base de test :
+`npx wrangler d1 migrations apply renaissance-itech-preview --remote --config wrangler.preview-migrations.jsonc`
