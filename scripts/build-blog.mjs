@@ -353,7 +353,7 @@ function listingPage(articles) {
     </div>
   </main>`;
   return page({
-    title: 'Blog : IA privée, cybersécurité et transformation numérique | Renaissance iTech',
+    title: 'Blog IA privée et cybersécurité | Renaissance iTech',
     desc: 'IA privée, automatisation, cybersécurité et transformation numérique : des conseils concrets pour les PME et TPE, par l’équipe Renaissance iTech.',
     canonical: `${SITE}/blog`,
     body,
@@ -473,7 +473,7 @@ function articlePage(a, articles) {
   </main>`;
 
   return page({
-    title: `${a.title} | Blog Renaissance iTech`,
+    title: `${a.title} | Renaissance iTech`.length <= 65 ? `${a.title} | Renaissance iTech` : a.title,
     desc: a.description,
     canonical: url,
     type: 'article',
