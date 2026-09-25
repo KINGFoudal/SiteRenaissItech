@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mot de passe | Renaissance iTech</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Choisir ou réinitialiser le mot de passe de votre espace Renaissance iTech.">
+  <meta name="theme-color" content="#0A0A0A">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css?v=373d95caf5">
+</head>
+<body class="app-page">
+  <main class="login-screen">
+    <div class="login-card card" data-mdp-page>
+      <a class="logo" href="/"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="Renaissance iTech" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+      <h1 data-mdp-title>Mot de passe oublié</h1>
+      <div data-mdp-demande>
+        <p>Indiquez l’adresse email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.</p>
+        <form class="form-grid" data-mdp-demande-form novalidate>
+          <div><label class="field-label" for="m-email">Adresse email</label><input class="input" id="m-email" name="email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" required></div>
+          <button class="btn btn-primary btn-block" type="submit">Recevoir le lien</button>
+          <p class="form-msg" data-mdp-msg role="status" hidden></p>
+        </form>
+      </div>
+      <div data-mdp-nouveau hidden>
+        <p>Choisissez votre nouveau mot de passe.</p>
+        <form class="form-grid" data-mdp-nouveau-form novalidate>
+          <div><label class="field-label" for="m-nouveau">Nouveau mot de passe</label><div class="pwd"><input class="input" id="m-nouveau" name="nouveau" type="password" autocomplete="new-password" required minlength="10"><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="m-nouveau" aria-pressed="false">Afficher</button></div></div>
+          <p class="form-note">10 caractères minimum, avec au moins une lettre et un chiffre.</p>
+          <div><label class="field-label" for="m-confirm">Confirmer le mot de passe</label><div class="pwd"><input class="input" id="m-confirm" name="confirmation" type="password" autocomplete="new-password" required minlength="10"><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="m-confirm" aria-pressed="false">Afficher</button></div></div>
+          <button class="btn btn-primary btn-block" type="submit">Enregistrer</button>
+          <p class="form-msg" data-mdp-msg2 role="status" hidden></p>
+        </form>
+      </div>
+      <div class="login-links"><a href="/espace-client" data-mdp-retour>Retour à la connexion</a><a href="/">Retour au site</a></div>
+    </div>
+  </main>
+  <div class="toast" role="status" aria-live="polite" data-toast></div>
+  <script src="/assets/js/espaces.js?v=ba08242522" defer></script>
+</body>
+</html>

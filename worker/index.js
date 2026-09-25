@@ -3,7 +3,7 @@
  *
  * Formulaires      POST /api/contact, GET /api/creneaux, POST /api/rendez-vous
  * Newsletter       POST /api/newsletter, POST /api/newsletter/desinscription
- * Connexion        POST /api/auth/lien, POST /api/auth/verifier, POST /api/auth/deconnexion
+ * Connexion        POST /api/auth/connexion, /mot-de-passe-oublie, /reinitialiser, /changer, /deconnexion
  * Espace client    GET /api/client/moi, POST /api/client/message, POST /api/client/profil
  * Administration   /api/admin/…
  * Assistant IA     POST /api/assistant
@@ -16,7 +16,7 @@
 import { HttpError, json } from './lib.js';
 import { contact, creneaux, rendezVous } from './formulaires.js';
 import { inscription, desinscription } from './newsletter.js';
-import { demanderLien, verifierLien, deconnexion } from './auth.js';
+import { connexion, motDePasseOublie, reinitialiser, changer, deconnexion } from './auth.js';
 import * as espaces from './espaces.js';
 import { assistant } from './assistant.js';
 
@@ -26,8 +26,10 @@ const ROUTES = {
   'POST /api/rendez-vous': rendezVous,
   'POST /api/newsletter': inscription,
   'POST /api/newsletter/desinscription': desinscription,
-  'POST /api/auth/lien': demanderLien,
-  'POST /api/auth/verifier': verifierLien,
+  'POST /api/auth/connexion': connexion,
+  'POST /api/auth/mot-de-passe-oublie': motDePasseOublie,
+  'POST /api/auth/reinitialiser': reinitialiser,
+  'POST /api/auth/changer': changer,
   'POST /api/auth/deconnexion': deconnexion,
   'GET /api/client/moi': espaces.clientMoi,
   'POST /api/client/message': espaces.clientMessage,
@@ -43,6 +45,8 @@ const ROUTES = {
   'GET /api/admin/demandes': espaces.adminDemandes,
   'POST /api/admin/demande/traiter': espaces.adminDemandeTraiter,
   'GET /api/admin/clients': espaces.adminClients,
+  'POST /api/admin/client/creer': espaces.adminClientCreer,
+  'POST /api/admin/client/acces': espaces.adminClientAcces,
   'GET /api/admin/assistant': espaces.adminAssistant,
   'POST /api/assistant': assistant,
 };
@@ -60,7 +64,7 @@ export default {
     try {
       return await route(request, env, ctx);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof HttpError) return json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, e.status);
       console.error(pathname, e);
       return json({ error: 'Une erreur est survenue. Réessayez ou écrivez-nous à contact@renaissance-itech.com.' }, 500);
     }

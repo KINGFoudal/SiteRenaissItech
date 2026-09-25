@@ -17,7 +17,7 @@ const IGNORE_NET = /fonts\.(googleapis|gstatic)\.com|cloudflareinsights/;
   // Pages : sitemap + pages non indexées
   const sm = await (await fetch(BASE + '/sitemap.xml')).text();
   const pages = [...sm.matchAll(/<loc>https:\/\/www\.renaissance-itech\.com(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
-  const extra = ['/merci-contact', '/rendez-vous-confirme?service=Cybers%C3%A9curit%C3%A9&date=2026-10-06&heure=10:00', '/newsletter-confirmee', '/desinscription', '/espace-client', '/admin', '/connexion', '/page-inexistante'];
+  const extra = ['/merci-contact', '/rendez-vous-confirme?service=Cybers%C3%A9curit%C3%A9&date=2026-10-06&heure=10:00', '/newsletter-confirmee', '/desinscription', '/espace-client', '/admin', '/mot-de-passe', '/page-inexistante'];
   const all = [...new Set([...pages, ...extra])];
 
   // robots / sitemap
@@ -75,7 +75,7 @@ const IGNORE_NET = /fonts\.(googleapis|gstatic)\.com|cloudflareinsights/;
         words: txt.split(/\s+/).length,
       };
     });
-    const priv = /espace-client|admin|connexion|merci|confirme|desinscription|inexistante/.test(p);
+    const priv = /espace-client|admin|mot-de-passe|merci|confirme|desinscription|inexistante/.test(p);
     if (d.lang !== 'fr') add('MOYENNE', 'SEO', p, `lang="${d.lang}"`);
     if (!d.viewport) add('HAUTE', 'Mobile', p, 'meta viewport absente');
     if (!d.title) add('HAUTE', 'SEO', p, 'Titre absent'); else if (!priv && (d.title.length < 20 || d.title.length > 70)) add('BASSE', 'SEO', p, `Titre de ${d.title.length} caractères (idéal 30 à 65) : « ${d.title} »`);
@@ -172,10 +172,10 @@ const IGNORE_NET = /fonts\.(googleapis|gstatic)\.com|cloudflareinsights/;
   } catch (e) { add('HAUTE', 'Parcours', '/', 'Assistant : ' + e.message.split('\n')[0]); }
   try {
     await fp.goto(BASE + '/admin');
-    await fp.fill('[data-login] input[type=email]', 'contact@renaissance-itech.com');
+    await fp.fill('[data-login] input[type=email]', 'audit@example.com'); await fp.fill('[data-login] input[type=password]', 'mauvais-mdp-1');
     await fp.click('[data-login] button[type=submit]');
-    await fp.waitForSelector('[data-login] .form-msg:not([hidden]), [data-login] [data-msg]:not([hidden])', { timeout: 10000 });
-  } catch (e) { add('HAUTE', 'Parcours', '/admin', 'Demande de lien de connexion : ' + e.message.split('\n')[0]); }
+    await fp.waitForSelector('[data-login-msg]:not([hidden])', { timeout: 10000 });
+  } catch (e) { add('HAUTE', 'Parcours', '/admin', 'Connexion admin (refus attendu) : ' + e.message.split('\n')[0]); }
   try {
     await fp.goto(BASE + '/services');
     await fp.setViewportSize({ width: 1440, height: 900 });

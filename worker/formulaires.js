@@ -111,7 +111,7 @@ export async function rendezVous(request, env, ctx) {
     throw e;
   }
 
-  // Chaque rendez-vous ouvre un projet, visible aussitôt dans l'administration et l'espace client
+  // Chaque rendez-vous ouvre un projet, visible aussitôt dans l'administration (et dans l'espace client si le client est premium)
   const client = await upsertClient(env, { email, nom, telephone });
   const { meta: pMeta } = await env.DB.prepare("INSERT INTO projets (client_id, titre, service, statut, origine, rdv_id) VALUES (?, ?, ?, 'nouveau', 'rendez_vous', ?)")
     .bind(client.id, service, service, id).run();
@@ -133,7 +133,7 @@ export async function rendezVous(request, env, ctx) {
     sendEmail(env, {
       to: email,
       subject: `Votre rendez-vous du ${frDate(date)} à ${heure} est confirmé`,
-      html: emailLayout('Rendez-vous confirmé', `<p>Bonjour ${esc(nom)},</p><p>Votre rendez-vous avec Renaissance iTech est bien enregistré.</p>${emailTable([['Service', service], ['Date', quand], ['Durée', `${RDV_MINUTES} minutes`], ['Lieu', 'Visioconférence Google Meet']])}<p>Vous recevrez le lien de la réunion par email avant le rendez-vous. L’invitation jointe l’ajoute à votre agenda.</p><p>Votre projet est ouvert dans votre espace client : vous pouvez y suivre son avancement et échanger avec notre équipe.</p>${emailButton(`${site}/espace-client`, 'Accéder à mon espace client')}<p>Un empêchement ? Répondez simplement à cet email.</p>`),
+      html: emailLayout('Rendez-vous confirmé', `<p>Bonjour ${esc(nom)},</p><p>Votre rendez-vous avec Renaissance iTech est bien enregistré.</p>${emailTable([['Service', service], ['Date', quand], ['Durée', `${RDV_MINUTES} minutes`], ['Lieu', 'Visioconférence Google Meet']])}<p>Vous recevrez le lien de la réunion par email avant le rendez-vous. L’invitation jointe l’ajoute à votre agenda.</p>${client.acces_premium ? `<p>Ce rendez-vous est ajouté à votre espace client, où vous pouvez suivre vos projets et échanger avec notre équipe.</p>${emailButton(`${site}/espace-client`, 'Accéder à mon espace client')}` : ''}<p>Un empêchement ? Répondez simplement à cet email.</p>`),
       attachment: invitation,
     }),
   ]));

@@ -4,7 +4,7 @@ export const TZ = 'Europe/Paris';
 export const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$/;
 
 export class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 export const json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), {

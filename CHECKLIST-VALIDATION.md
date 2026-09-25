@@ -74,6 +74,8 @@
 
 - ⬜ Espace client réel (connexion, suivi des projets, factures). Aujourd’hui : écran de connexion + démonstration
 - ✅ Assistant IA du site (Workers AI) sur toutes les pages publiques
+- ✅ Espace client réservé aux clients premium : email + mot de passe, accès créé par l’admin (mot de passe provisoire), mot de passe oublié
+- ⬜ **Vous** : première connexion admin via « Mot de passe oublié » sur /admin avec contact@renaissance-itech.com
 - ⬜ **Vous** : remplacer les illustrations du blog par de vraies photos si souhaité (dossier `assets/img/blog/`)
 - ⬜ Formations : la page affiche une progression d’exemple (65 %) ; à relier aux comptes clients
 - ⬜ Création automatique des réunions Google Meet

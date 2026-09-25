@@ -961,3 +961,16 @@ body:not(.home) .mission strong,
 body:not(.home) .band .accent { color: #FF6B1A; }
 body:not(.home) .site-footer a:hover { color: #FF8A47; }
 .prog-dur { color: #9A3412; }
+
+/* ---------- Connexion par mot de passe ---------- */
+.pwd { position: relative; }
+.pwd .input { padding-right: 92px; }
+.pwd-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); min-height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--bg-soft); color: #333; font-size: 12.5px; font-weight: 600; }
+.pwd-toggle:hover { background: #ECECEC; }
+.link-btn { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.temp-pwd { display: flex; align-items: center; gap: 10px; margin: 14px 0; padding: 14px 16px; border-radius: 8px; background: var(--bg-soft); border: 1px dashed #CFCFCF; }
+.temp-pwd code { flex: 1; font-size: 18px; font-weight: 700; letter-spacing: .04em; word-break: break-all; }
+.status-premium { background: #DCFCE7; color: #166534; }
+.status-sans { background: #F3F4F6; color: #4B5563; }
+.status-provisoire { background: #FEF3C7; color: #92400E; }
+.modal-card p + p, .modal-card p + .temp-pwd + p { margin-top: 8px; }

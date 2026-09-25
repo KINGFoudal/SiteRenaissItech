@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=3941cac75c">
+  <link rel="stylesheet" href="/assets/css/style.css?v=373d95caf5">
 </head>
 <body class="app-page">
   <main class="login-screen" data-login hidden>
@@ -23,14 +23,32 @@
       <h1>Espace client</h1>
       <p>Suivez l’avancement de vos projets, vos rendez-vous et échangez avec notre équipe.</p>
       <form class="form-grid" data-login-form data-espace="client" novalidate>
-        <div><label class="field-label" for="l-email">Adresse email</label><input class="input" id="l-email" name="email" type="email" autocomplete="email" placeholder="vous@entreprise.fr" required></div>
-        <button class="btn btn-primary btn-block" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg> Recevoir mon lien de connexion</button>
+        <div><label class="field-label" for="l-email">Adresse email</label><input class="input" id="l-email" name="email" type="email" autocomplete="username" placeholder="vous@entreprise.fr" required></div>
+        <div><label class="field-label" for="l-mdp">Mot de passe</label><div class="pwd"><input class="input" id="l-mdp" name="mot_de_passe" type="password" autocomplete="current-password" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="l-mdp" aria-pressed="false">Afficher</button></div></div>
+        <button class="btn btn-primary btn-block" type="submit">Se connecter</button>
         <p class="form-msg" data-login-msg role="status" hidden></p>
       </form>
       <div class="login-links">
-        <span class="login-help">Pas de mot de passe à retenir : nous vous envoyons un lien sécurisé, valable 20 minutes, qui vérifie votre adresse email.</span>
+        <a href="/mot-de-passe?espace=client">Mot de passe oublié ?</a>
+        <span class="login-help">Accès réservé aux clients premium : vos identifiants vous sont remis par notre équipe. Pas encore client ? <a href="/rendez-vous">Prenons rendez-vous</a>.</span>
         <a href="/">Retour au site</a>
       </div>
+    </div>
+  </main>
+  <main class="login-screen" data-change hidden>
+    <div class="login-card card">
+      <a class="logo" href="/"><img class="logo-mark" src="/assets/img/logo-mark.svg" alt="Renaissance iTech" width="34" height="34"><span class="logo-text">Renaissance<span>iTech</span></span></a>
+      <h1>Choisissez votre mot de passe</h1>
+      <p>Pour sécuriser votre compte, remplacez le mot de passe provisoire par un mot de passe personnel.</p>
+      <form class="form-grid" data-change-form novalidate>
+        <div><label class="field-label" for="c-actuel">Mot de passe provisoire</label><div class="pwd"><input class="input" id="c-actuel" name="actuel" type="password" autocomplete="current-password" required><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="c-actuel" aria-pressed="false">Afficher</button></div></div>
+        <div><label class="field-label" for="c-nouveau">Nouveau mot de passe</label><div class="pwd"><input class="input" id="c-nouveau" name="nouveau" type="password" autocomplete="new-password" required minlength="10"><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="c-nouveau" aria-pressed="false">Afficher</button></div></div>
+        <p class="form-note">10 caractères minimum, avec au moins une lettre et un chiffre.</p>
+        <div><label class="field-label" for="c-confirm">Confirmer le nouveau mot de passe</label><div class="pwd"><input class="input" id="c-confirm" name="confirmation" type="password" autocomplete="new-password" required minlength="10"><button class="pwd-toggle" type="button" data-pwd-toggle aria-controls="c-confirm" aria-pressed="false">Afficher</button></div></div>
+        <button class="btn btn-primary btn-block" type="submit">Enregistrer et continuer</button>
+        <p class="form-msg" data-change-msg role="status" hidden></p>
+      </form>
+      <div class="login-links"><button class="link-btn" type="button" data-logout>Se déconnecter</button></div>
     </div>
   </main>
   <div class="app" data-app data-espace="client" hidden>
@@ -67,6 +85,6 @@
     </div>
   </div>
   <div class="toast" role="status" aria-live="polite" data-toast></div>
-  <script src="/assets/js/espaces.js?v=0680f09f84" defer></script>
+  <script src="/assets/js/espaces.js?v=ba08242522" defer></script>
 </body>
 </html>
