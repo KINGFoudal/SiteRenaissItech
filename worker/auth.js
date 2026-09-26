@@ -58,10 +58,20 @@ async function verifierMotDePasse(motDePasse, empreinte) {
   return diff === 0 && Boolean(empreinte);
 }
 
+// Un copier-coller depuis un email ajoute souvent des espaces avant ou après le mot de passe :
+// on essaie la saisie telle quelle, puis sans ces espaces
+async function verifierSaisie(saisie, empreinte) {
+  const brut = String(saisie || '').slice(0, 128);
+  if (await verifierMotDePasse(brut, empreinte)) return true;
+  const net = brut.trim();
+  return net !== brut && net !== '' && verifierMotDePasse(net, empreinte);
+}
+
 export function validerMotDePasse(motDePasse, email) {
   const m = String(motDePasse || '');
   if (m.length < 10) throw new HttpError(400, 'Le mot de passe doit contenir au moins 10 caractères.');
   if (m.length > 128) throw new HttpError(400, 'Le mot de passe est trop long (128 caractères maximum).');
+  if (m !== m.trim()) throw new HttpError(400, 'Le mot de passe ne doit pas commencer ni finir par un espace.');
   if (!/[a-zA-Z]/.test(m) || !/\d/.test(m)) throw new HttpError(400, 'Le mot de passe doit contenir au moins une lettre et un chiffre.');
   if (email && m.toLowerCase().includes(email.split('@')[0].toLowerCase())) throw new HttpError(400, 'Le mot de passe ne doit pas contenir votre adresse email.');
 }
@@ -128,7 +138,7 @@ export async function connexion(request, env) {
   const email = clean(data.email, 254).toLowerCase();
   const motDePasse = String(data.mot_de_passe || '').slice(0, 128);
   const role = data.espace === 'admin' ? 'admin' : 'client';
-  if (!EMAIL_RE.test(email) || !motDePasse) throw new HttpError(400, 'Indiquez votre email et votre mot de passe.');
+  if (!EMAIL_RE.test(email) || !motDePasse.trim()) throw new HttpError(400, 'Indiquez votre email et votre mot de passe.');
   requireDb(env);
   await verifierTurnstile(env, request, data.turnstile);
 
@@ -142,7 +152,7 @@ export async function connexion(request, env) {
   }
 
   const c = await compte(env, email, role);
-  const ok = await verifierMotDePasse(motDePasse, c?.mot_de_passe);
+  const ok = await verifierSaisie(motDePasse, c?.mot_de_passe);
   await env.DB.prepare('INSERT INTO tentatives_connexion (email, ip_hash, reussi) VALUES (?, ?, ?)').bind(email, ip, ok ? 1 : 0).run();
   // Même message dans tous les cas : on ne révèle pas quelles adresses ont un accès
   if (!ok) throw new HttpError(401, 'Email ou mot de passe incorrect.');
@@ -293,7 +303,7 @@ export async function changer(request, env) {
   const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM tentatives_connexion WHERE email = ? AND reussi = 0 AND cree_le > datetime('now', '-15 minutes')").bind(s.email).first();
   if (echecs.n >= MAX_ECHECS_EMAIL) throw new HttpError(429, 'Trop de tentatives. Réessayez dans 15 minutes.');
   const c = await compte(env, s.email, s.role);
-  if (!c || !(await verifierMotDePasse(String(data.actuel || '').slice(0, 128), c.mot_de_passe))) {
+  if (!c || !(await verifierSaisie(data.actuel, c.mot_de_passe))) {
     await env.DB.prepare('INSERT INTO tentatives_connexion (email, ip_hash, reussi) VALUES (?, ?, 0)').bind(s.email, await ipHash(request)).run();
     throw new HttpError(400, 'Le mot de passe actuel est incorrect.');
   }
