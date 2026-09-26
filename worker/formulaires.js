@@ -72,8 +72,10 @@ export async function creneaux(request, env) {
   if (!validDate(date)) throw new HttpError(400, 'Date invalide.');
   if (!env.DB) return json({ date, pris: [] });
   const { results } = await env.DB.prepare("SELECT heure FROM rendez_vous WHERE date = ? AND statut = 'confirme'").bind(date).all();
+  // Créneaux passés selon l'heure de Paris : toute la journée si la date est déjà passée à Paris
+  // (visiteur dans un fuseau en retard, par exemple en Guinée, le soir)
   const now = parisNow();
-  const passes = date === now.date ? SLOTS.filter((s) => s <= now.time) : [];
+  const passes = date < now.date ? SLOTS : date === now.date ? SLOTS.filter((s) => s <= now.time) : [];
   return json({ date, pris: [...new Set([...results.map((r) => r.heure), ...passes])] });
 }
 

@@ -72,8 +72,22 @@ export default {
   },
 
   async fetch(request, env, ctx) {
-    const { pathname } = new URL(request.url);
-    if (!pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    const url = new URL(request.url);
+    const { pathname } = url;
+
+    // Adresse officielle : https://www.renaissance-itech.com (le domaine nu y redirige, chemin conservé)
+    if (url.hostname === 'renaissance-itech.com') {
+      return new Response(null, { status: 301, headers: { Location: `https://www.renaissance-itech.com${pathname}${url.search}`, 'Cache-Control': 'public, max-age=3600' } });
+    }
+
+    if (!pathname.startsWith('/api/')) {
+      const res = await env.ASSETS.fetch(request);
+      // L'adresse de test workers.dev reste accessible mais n'est pas indexée par les moteurs de recherche
+      if (!url.hostname.endsWith('.workers.dev')) return res;
+      const copie = new Response(res.body, res);
+      copie.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return copie;
+    }
 
     const route = ROUTES[`${request.method} ${pathname}`];
     if (!route) {
