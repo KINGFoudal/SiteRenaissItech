@@ -534,57 +534,12 @@
     if (fromHash) { activate(fromHash); requestAnimationFrame(() => fromHash.scrollIntoView({ block: 'start' })); }
   }
 
-  /* ---------- Accueil : démo animée de l'assistant IA privé ---------- */
-  const demo = $('[data-ai-demo]');
-  if (demo && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const SCENES = [
-      { q: 'Quel délai de paiement prévoit notre contrat cadre ?', doc: 'contrat',
-        a: 'D’après le contrat cadre 2025 (article 7.2), le paiement intervient à 45 jours fin de mois à compter de la date de facture.', src: 'Contrat_cadre_2025.pdf · p. 6' },
-      { q: 'Qui valide un achat de plus de 5 000 € ?', doc: 'achats',
-        a: 'La procédure achats (section 3) impose la validation du responsable de service puis de la direction financière, avec trois devis comparatifs.', src: 'Procédure_achats.docx · §3' },
-      { q: 'Combien de jours de télétravail sont autorisés ?', doc: 'rh',
-        a: 'Jusqu’à 2 jours par semaine, après accord du manager et signature de l’avenant au contrat de travail.', src: 'Note_RH_teletravail.pdf · p. 2' },
-    ];
-    const chat = $('[data-ai-chat]', demo);
-    const input = $('.ai-input', demo);
-    const typing = $('[data-ai-typing]', demo);
-    const placeholder = typing.textContent;
-    const fileIcon = $('.ai-src svg', demo)?.outerHTML || '';
-    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    const el = (cls, html) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; return d; };
-    let visible = true;
-    new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(demo);
-    const whenVisible = async () => { while (!visible || document.hidden) await wait(400); };
-
-    const play = async (s) => {
-      await whenVisible();
-      chat.replaceChildren();
-      input.classList.add('is-typing');
-      typing.textContent = '';
-      for (const ch of s.q) { typing.textContent += ch; await wait(38); }
-      await wait(450);
-      input.classList.remove('is-typing');
-      typing.textContent = placeholder;
-      chat.append(el('ai-msg ai-q', `<span>${s.q}</span>`));
-      const search = el('ai-search', '<i></i> Recherche dans vos documents…');
-      chat.append(search);
-      const li = $(`[data-doc="${s.doc}"]`, demo);
-      await wait(700);
-      li.classList.add('is-reading');
-      await wait(1100);
-      search.remove();
-      const ans = el('ai-msg ai-a', '<span></span>');
-      chat.append(ans);
-      const span = $('span', ans);
-      for (const w of s.a.split(' ')) { span.textContent += (span.textContent ? ' ' : '') + w; await wait(55); }
-      ans.insertAdjacentHTML('beforeend', `<em class="ai-src">${fileIcon} ${s.src}</em>`);
-      li.classList.remove('is-reading');
-      await wait(4200);
-    };
-    (async () => {
-      await wait(1200);
-      for (let n = 0; ; n = (n + 1) % SCENES.length) await play(SCENES[n]);
-    })();
+  /* ---------- Accueil : vidéo de présentation (muette, en boucle) ---------- */
+  const video = $('.phone-screen video');
+  if (video && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    video.removeAttribute('autoplay');
+    video.pause();
+    video.controls = true;
   }
 
 })();
