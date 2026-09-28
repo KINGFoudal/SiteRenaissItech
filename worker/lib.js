@@ -111,6 +111,22 @@ export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="$
 
 export const emailTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:8px 0;color:#666;width:130px;vertical-align:top">${esc(k)}</td><td style="padding:8px 0">${esc(v).replace(/\n/g, '<br>')}</td></tr>`).join('')}</table>`;
 
+// Version texte de l'email : les messageries se méfient des emails sans version texte (filtre anti-spam)
+export function htmlVersTexte(html) {
+  const entites = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ', rsquo: '’' };
+  return String(html)
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => `${label} : ${href}`)
+    .replace(/<\/td>\s*<td[^>]*>/gi, ' : ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h\d|tr|li|table)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(amp|lt|gt|quot|#39|nbsp|rsquo);/g, (_, e) => entites[e])
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // N'échoue jamais : les données sont déjà enregistrées en base
 export async function sendEmail(env, { to, subject, html, replyTo, attachment }) {
   if (!env.BREVO_API_KEY) return false;
@@ -123,6 +139,7 @@ export async function sendEmail(env, { to, subject, html, replyTo, attachment })
         to: [{ email: to }],
         subject,
         htmlContent: html,
+        textContent: htmlVersTexte(html),
         ...(replyTo ? { replyTo: { email: replyTo } } : {}),
         ...(attachment ? { attachment: [attachment] } : {}),
       }),
