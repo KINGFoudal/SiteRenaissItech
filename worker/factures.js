@@ -19,6 +19,7 @@ import {
   sendEmail, envoyerEmail, notifyEmail, siteUrl, upsertClient, randomToken, validDate, parisNow, requireDb,
 } from './lib.js';
 import { requireSession } from './auth.js';
+import { crmEvenement } from './crm.js';
 import { journal } from './securite.js';
 import { paiementActif, creerSessionPaiement, lireSession, verifierWebhook } from './stripe.js';
 
@@ -200,6 +201,7 @@ export async function adminFactureAction(request, env, ctx) {
   if (act === 'payee') {
     const mode = MODES.includes(data.mode) ? data.mode : 'virement';
     await env.DB.prepare("UPDATE factures SET statut = 'payee', payee_le = datetime('now'), mode_paiement = ?, maj_le = datetime('now') WHERE id = ?").bind(mode, f.id).run();
+    await crmEvenement(env, 'paiement', { clientId: f.client_id });
     await journal(env, request, s.email, 'Facture marquée payée', f.numero, mode);
     return json({ ok: true, message: `${f.numero} marquée payée : les relances s’arrêtent.` });
   }
@@ -428,6 +430,7 @@ async function factureReglee(env, id, s) {
     WHERE id = ? AND statut = 'a_payer'`).bind(s.id, id).run();
   if (!meta.changes) return;
   const f = await env.DB.prepare('SELECT f.*, c.email, c.nom FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.id = ?').bind(id).first();
+  await crmEvenement(env, 'paiement', { clientId: f.client_id });
   const b = base(env);
   await Promise.all([
     sendEmail(env, { to: f.email, replyTo: notifyEmail(env), subject: `Paiement reçu · facture ${f.numero}`,
@@ -443,6 +446,7 @@ async function commandeReglee(env, id, s) {
   const email = clean(s.customer_details?.email || s.customer_email, 254).toLowerCase();
   const nom = clean(s.customer_details?.name, 100);
   const client = await upsertClient(env, { email, nom, telephone: clean(s.customer_details?.phone, 30) });
+  await crmEvenement(env, 'boutique', { clientId: client.id });
   const lignes = JSON.parse(c.lignes);
   const fact = await param(env, 'facturation', FACTURATION_DEFAUT);
   const taux = Math.round(Number(fact.taux_tva) * 100) || 0;

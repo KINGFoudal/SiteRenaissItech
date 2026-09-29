@@ -4,6 +4,7 @@ import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton, emailTable,
   sendEmail, notifyEmail, siteUrl, upsertClient,
 } from './lib.js';
+import { resumeCrm } from './crm.js';
 import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
 import { journal } from './securite.js';
@@ -90,6 +91,7 @@ export async function adminResume(request, env) {
     kpis: { rdv_a_venir: rdvAVenir.n, demandes_a_traiter: demandes.n, projets_actifs: projetsActifs.n, clients: clients.n, questions_assistant_7j: questions.n },
     prochains_rdv: prochains, demandes: dernieresDemandes, messages: derniersMessages,
     ...(await resumeFinances(env)),
+    ...(await resumeCrm(env)),
   });
 }
 
@@ -232,16 +234,6 @@ export async function adminDemandeTraiter(request, env) {
   await env.DB.prepare('UPDATE contacts SET traite = ? WHERE id = ?').bind(data.traite ? 1 : 0, int(data.id)).run();
   await journal(env, request, session.email, data.traite ? 'Demande marquée traitée' : 'Demande marquée à traiter', `Demande #${int(data.id)}`);
   return json({ ok: true });
-}
-
-export async function adminClients(request, env) {
-  await requireSession(request, env, 'admin');
-  const { results } = await env.DB.prepare(`SELECT c.id, c.email, c.nom, c.telephone, c.entreprise, c.cree_le, c.derniere_connexion,
-      c.acces_premium, c.doit_changer_mdp, c.acces_cree_le, c.mdp_maj_le,
-      (SELECT COUNT(*) FROM projets p WHERE p.client_id = c.id) AS nb_projets,
-      (SELECT COUNT(*) FROM rendez_vous r WHERE r.email = c.email) AS nb_rdv
-    FROM clients c ORDER BY c.acces_premium DESC, c.id DESC LIMIT 300`).all();
-  return json({ clients: results });
 }
 
 export async function adminAssistant(request, env) {

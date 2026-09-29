@@ -6,6 +6,7 @@ import {
   parisNow, parisToUtc, validDate, frDate, emailLayout, emailButton, emailTable,
   sendEmail, toBase64, notifyEmail, siteUrl, upsertClient,
 } from './lib.js';
+import { crmEvenement } from './crm.js';
 
 export const SLOTS = ['09:00', '10:00', '11:00', '14:00', '15:00'];
 const RDV_MINUTES = 30;
@@ -48,7 +49,8 @@ export async function contact(request, env, ctx) {
   await rateLimit(env, 'contacts', hash, 5);
   const { meta } = await env.DB.prepare('INSERT INTO contacts (nom, email, sujet, message, ip_hash) VALUES (?, ?, ?, ?, ?)')
     .bind(nom, email, sujet, message, hash).run();
-  await upsertClient(env, { email, nom });
+  const client = await upsertClient(env, { email, nom });
+  await crmEvenement(env, 'demande', { clientId: client.id, sujet });
 
   const site = siteUrl(env, request);
   ctx.waitUntil(Promise.all([
@@ -118,6 +120,7 @@ export async function rendezVous(request, env, ctx) {
 
   // Chaque rendez-vous ouvre un projet, visible aussitôt dans l'administration (et dans l'espace client si le client est premium)
   const client = await upsertClient(env, { email, nom, telephone });
+  await crmEvenement(env, 'rdv', { clientId: client.id, service, date });
   const { meta: pMeta } = await env.DB.prepare("INSERT INTO projets (client_id, titre, service, statut, origine, rdv_id) VALUES (?, ?, ?, 'nouveau', 'rendez_vous', ?)")
     .bind(client.id, service, service, id).run();
   if (message) {

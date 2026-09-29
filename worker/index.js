@@ -32,6 +32,7 @@ import { purger } from './securite.js';
 import * as espaces from './espaces.js';
 import { assistant } from './assistant.js';
 import * as factures from './factures.js';
+import * as crm from './crm.js';
 import { paiementActif } from './stripe.js';
 
 const CRON_RELANCES = '12 7 * * *'; // 7 h 12 UTC : 9 h 12 l'été, 8 h 12 l'hiver à Paris
@@ -66,7 +67,15 @@ const ROUTES = {
   'POST /api/admin/message': espaces.adminMessage,
   'GET /api/admin/demandes': espaces.adminDemandes,
   'POST /api/admin/demande/traiter': espaces.adminDemandeTraiter,
-  'GET /api/admin/clients': espaces.adminClients,
+  'GET /api/admin/clients': crm.adminContacts,
+  'GET /api/admin/crm/fiche': crm.adminFiche,
+  'POST /api/admin/crm/contact': crm.adminContactSave,
+  'POST /api/admin/crm/note': crm.adminNote,
+  'GET /api/admin/crm/pipeline': crm.adminPipeline,
+  'POST /api/admin/crm/opportunite': crm.adminOpportunite,
+  'GET /api/admin/crm/taches': crm.adminTaches,
+  'POST /api/admin/crm/tache': crm.adminTache,
+  'GET /api/admin/crm/export': crm.adminExport,
   'POST /api/admin/client/creer': espaces.adminClientCreer,
   'POST /api/admin/client/acces': espaces.adminClientAcces,
   'GET /api/admin/assistant': espaces.adminAssistant,
@@ -89,7 +98,7 @@ const ROUTES = {
 export default {
   async scheduled(event, env, ctx) {
     // Deux déclencheurs (wrangler.jsonc) : la nuit pour le nettoyage, le matin pour les relances de factures
-    if (event.cron === CRON_RELANCES) ctx.waitUntil(factures.relances(env));
+    if (event.cron === CRON_RELANCES) ctx.waitUntil(Promise.all([factures.relances(env), crm.rappelTaches(env)]));
     else ctx.waitUntil(purger(env));
   },
 
