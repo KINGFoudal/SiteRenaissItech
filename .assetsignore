@@ -19,3 +19,4 @@ CHECKLIST-VALIDATION.md
 wrangler.preview-migrations.jsonc
 .dev.vars
 wrangler.test.jsonc
+PAIEMENTS.md
