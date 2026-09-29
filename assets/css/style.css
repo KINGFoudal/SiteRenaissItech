@@ -1031,3 +1031,34 @@ body.no-scroll { overflow: hidden; }
 /* Case à cocher sur une ligne (administration) */
 .checkline { display: inline-flex; align-items: center; gap: .5rem; font-size: .92rem; cursor: pointer; }
 .checkline input { width: 1rem; height: 1rem; accent-color: var(--orange, #ff6b1a); margin: 0; }
+
+/* ---------- Tableau de bord administrateur : chiffres, graphique, activité ---------- */
+.dash-title { margin: 8px 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.panels + .dash-title { margin-top: 28px; }
+.kpi .delta { font-weight: 600; }
+.kpi .delta.up { color: #15803D; }
+.kpi .delta.down { color: #B91C1C; }
+.kpi-alert { box-shadow: inset 3px 0 0 #DC2626; }
+.chart { position: relative; margin-top: 8px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid line { stroke: #EEEEEC; stroke-width: 1; }
+.chart text { font-size: 11px; fill: #6B6B6B; font-family: inherit; }
+.chart .bar path { fill: var(--orange-dark); transition: opacity .15s; }
+.chart .bar .hit { fill: transparent; }
+.chart:hover .bar path { opacity: .55; }
+.chart .bar.on path { opacity: 1; }
+.chart .bar.on text { fill: var(--black); font-weight: 600; }
+.chart-tip { position: absolute; transform: translateX(-50%); padding: 6px 10px; border-radius: 6px; background: var(--black); color: #fff; font-size: 12.5px; white-space: nowrap; pointer-events: none; }
+.chart-table { margin-top: 10px; font-size: 13px; }
+.chart-table summary { cursor: pointer; color: var(--muted); }
+.row-list .ri svg { display: block; }
+.ri-paiement, .ri-commande { background: #DCFCE7 !important; color: #15803D !important; }
+.ri-relance { background: #FEE2E2 !important; color: #B91C1C !important; }
+.activity li { align-items: flex-start; }
+.activity .grow { font-size: 13.5px; line-height: 1.45; }
+.activity .when { flex-shrink: 0; font-size: 12px; white-space: nowrap; }
+.panel h2.sub { margin-top: 22px; }
+.rank { width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--bg-soft, #F5F5F4); font-size: 12px; font-weight: 700; }
+.activity .grow strong { display: inline; }
+.row-list .grow small.muted { display: block; margin-top: 2px; }
+.activity .grow small.muted { display: inline; margin: 0; }

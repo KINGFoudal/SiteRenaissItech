@@ -89,7 +89,49 @@ export async function adminResume(request, env) {
     moi: session.email,
     kpis: { rdv_a_venir: rdvAVenir.n, demandes_a_traiter: demandes.n, projets_actifs: projetsActifs.n, clients: clients.n, questions_assistant_7j: questions.n },
     prochains_rdv: prochains, demandes: dernieresDemandes, messages: derniersMessages,
+    ...(await resumeFinances(env)),
   });
+}
+
+// Chiffres, activité récente et priorités du tableau de bord (factures, paiements, boutique)
+async function resumeFinances(env) {
+  const one = (sql) => env.DB.prepare(sql).first();
+  const all = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
+  try {
+    const [mois, moisPrec, aPayer, retard, boutique, serie, retards, topClients, activite] = await Promise.all([
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month')"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month', '-1 month') AND payee_le < date('now', 'start of month')"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'a_payer'"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'a_payer' AND echeance < date('now')"),
+      one("SELECT COUNT(*) AS n, COALESCE(SUM(montant_ttc), 0) AS total FROM commandes WHERE statut = 'payee' AND payee_le >= date('now', 'start of month')"),
+      all("SELECT strftime('%Y-%m', payee_le) AS mois, SUM(montant_ttc) AS total FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month', '-11 months') GROUP BY mois ORDER BY mois"),
+      all("SELECT f.id, f.numero, f.montant_ttc, f.echeance, CAST(julianday('now') - julianday(f.echeance) AS INTEGER) AS retard, c.nom, c.entreprise, c.email FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'a_payer' AND f.echeance < date('now') ORDER BY f.echeance LIMIT 5"),
+      all("SELECT c.nom, c.entreprise, c.email, SUM(f.montant_ttc) AS total, COUNT(*) AS n FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'payee' AND f.payee_le >= date('now', 'start of year') GROUP BY c.id ORDER BY total DESC LIMIT 5"),
+      // D1 limite les UNION : une requête par type d'événement, fusionnées ci-dessous
+      Promise.all([
+        "SELECT 'paiement' AS type, f.payee_le AS quand, f.numero AS ref, f.montant_ttc AS montant, COALESCE(c.entreprise, c.nom, c.email) AS qui, f.mode_paiement AS detail, 'factures' AS lien FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'payee' AND f.payee_le IS NOT NULL AND f.commande_id IS NULL ORDER BY f.payee_le DESC LIMIT 12",
+        "SELECT 'facture' AS type, f.cree_le AS quand, f.numero AS ref, f.montant_ttc AS montant, COALESCE(c.entreprise, c.nom, c.email) AS qui, f.objet AS detail, 'factures' AS lien FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.commande_id IS NULL ORDER BY f.id DESC LIMIT 12",
+        "SELECT 'commande' AS type, payee_le AS quand, reference AS ref, montant_ttc AS montant, email AS qui, NULL AS detail, 'boutique' AS lien FROM commandes WHERE statut = 'payee' ORDER BY payee_le DESC LIMIT 12",
+        "SELECT 'relance' AS type, r.cree_le AS quand, f.numero AS ref, f.montant_ttc AS montant, r.email AS qui, NULL AS detail, 'factures' AS lien FROM relances r JOIN factures f ON f.id = r.facture_id WHERE r.envoye = 1 ORDER BY r.id DESC LIMIT 12",
+        "SELECT 'rdv' AS type, cree_le AS quand, service AS ref, NULL AS montant, nom AS qui, date || ' ' || heure AS detail, 'rdv' AS lien FROM rendez_vous ORDER BY id DESC LIMIT 12",
+        "SELECT 'demande' AS type, cree_le AS quand, sujet AS ref, NULL AS montant, nom AS qui, NULL AS detail, 'demandes' AS lien FROM contacts ORDER BY id DESC LIMIT 12",
+        "SELECT 'message' AS type, m.cree_le AS quand, p.titre AS ref, NULL AS montant, COALESCE(c.nom, c.email) AS qui, NULL AS detail, 'projets' AS lien FROM messages m JOIN projets p ON p.id = m.projet_id JOIN clients c ON c.id = p.client_id WHERE m.auteur = 'client' ORDER BY m.id DESC LIMIT 12",
+        "SELECT 'client' AS type, cree_le AS quand, NULL AS ref, NULL AS montant, COALESCE(entreprise, nom, email) AS qui, NULL AS detail, 'clients' AS lien FROM clients ORDER BY id DESC LIMIT 12",
+      ].map(all)).then((listes) => listes.flat().filter((a) => a.quand).sort((a, b) => (a.quand < b.quand ? 1 : -1)).slice(0, 12)),
+    ]);
+    return {
+      finances: {
+        encaisse_mois: mois.total, factures_payees_mois: mois.n, encaisse_mois_prec: moisPrec.total,
+        a_encaisser: aPayer.total, factures_a_payer: aPayer.n, en_retard: retard.total, factures_en_retard: retard.n,
+        commandes_mois: boutique.n, boutique_mois: boutique.total,
+      },
+      serie_encaissements: serie, factures_en_retard: retards, top_clients: topClients, activite,
+    };
+  } catch (e) {
+    // Base pas encore migrée (tables factures absentes) : le tableau de bord reste utilisable
+    console.error('Tableau de bord finances', e);
+    return {};
+  }
 }
 
 export async function adminRendezVous(request, env) {

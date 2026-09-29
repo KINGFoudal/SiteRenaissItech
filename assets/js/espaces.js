@@ -33,7 +33,7 @@
   const badge = (s) => `<span class="status status-${h(s)}">${h(STATUTS[s] || s)}</span>`;
   const progress = (n) => `<div class="progress" role="progressbar" aria-valuenow="${+n}" aria-valuemin="0" aria-valuemax="100"><i style="width:${+n}%"></i></div>`;
   const initials = (s) => (s || '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
-  const euros = (c) => `${(Number(c) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const euros = (c) => `${(Number(c) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u00a0€`;
   const statutFacture = (f, today = new Date().toISOString().slice(0, 10)) => (f.statut === 'payee' ? '<span class="status status-payee">Payée</span>'
     : f.statut === 'annulee' ? '<span class="status status-annulee">Annulée</span>'
       : f.echeance < today ? '<span class="status status-retard">En retard</span>' : '<span class="status status-a_payer">À payer</span>');
@@ -44,6 +44,23 @@
   }).join('')}</div>` : empty('Aucun message pour le moment.'));
 
   /* ---------- Afficher / masquer un mot de passe ---------- */
+
+  // Infobulle du graphique d'encaissements
+  document.addEventListener('mousemove', (e) => {
+    const chart = e.target.closest?.('[data-chart]');
+    document.querySelectorAll('[data-chart] .chart-tip').forEach((t) => { if (!chart || !chart.contains(t)) t.hidden = true; });
+    if (!chart) return;
+    const tip = chart.querySelector('.chart-tip');
+    const bar = e.target.closest('.bar');
+    chart.querySelectorAll('.bar.on').forEach((b) => b !== bar && b.classList.remove('on'));
+    if (!bar) { tip.hidden = true; return; }
+    bar.classList.add('on');
+    tip.textContent = bar.dataset.tip;
+    tip.hidden = false;
+    const r = chart.getBoundingClientRect();
+    tip.style.left = `${Math.min(Math.max(e.clientX - r.left, 70), r.width - 70)}px`;
+    tip.style.top = `${e.clientY - r.top - 44}px`;
+  });
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-pwd-toggle]');
     if (!t) return;
@@ -329,6 +346,71 @@
       </div>
     </form>`;
 
+
+  /* ---------- Tableau de bord administrateur : finances, graphique, activité ---------- */
+  const depuis = (s) => { // durée écoulée, lisible : « il y a 5 min », « hier », « 12 oct. »
+    if (!s) return '';
+    const d = new Date(`${s.replace(' ', 'T')}${s.length <= 10 ? 'T12:00:00' : ''}Z`);
+    const min = Math.round((Date.now() - d) / 60000);
+    if (min < 1) return 'à l’instant';
+    if (min < 60) return `il y a ${min} min`;
+    if (min < 60 * 24) return `il y a ${Math.round(min / 60)} h`;
+    if (min < 60 * 48) return 'hier';
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+  const ICONES = {
+    paiement: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+    facture: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+    commande: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
+    relance: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    rdv: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    demande: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/>',
+    message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
+    client: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+  };
+  const icone = (t) => `<span class="ri ri-${h(t)}" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONES[t] || ICONES.facture}</svg></span>`;
+  const phraseActivite = (a) => {
+    const m = a.montant != null ? ` · <strong>${euros(a.montant)}</strong>` : '';
+    return {
+      paiement: `Paiement reçu de <strong>${h(a.qui)}</strong> · ${h(a.ref)}${m}${a.detail ? ` <small class="muted">(${h(a.detail)})</small>` : ''}`,
+      facture: `Facture <strong>${h(a.ref)}</strong> émise pour ${h(a.qui)}${m}`,
+      commande: `Achat en boutique <strong>${h(a.ref)}</strong>${a.qui ? ` par ${h(a.qui)}` : ''}${m}`,
+      relance: `Relance envoyée à ${h(a.qui)} · ${h(a.ref)}${m}`,
+      rdv: `Rendez-vous pris par <strong>${h(a.qui)}</strong> · ${h(a.ref)}${a.detail ? ` <small class="muted">le ${h(fmtDay(a.detail.slice(0, 10)))} à ${h(a.detail.slice(11))}</small>` : ''}`,
+      demande: `Nouvelle demande de <strong>${h(a.qui)}</strong> · ${h(a.ref)}`,
+      message: `Message de <strong>${h(a.qui)}</strong> sur « ${h(a.ref)} »`,
+      client: `Nouveau client : <strong>${h(a.qui)}</strong>`,
+    }[a.type] || h(a.type);
+  };
+  const variation = (actuel, avant) => {
+    if (!avant) return actuel ? '<span class="delta up">Premier mois encaissé</span>' : '<span>Rien encaissé ce mois</span>';
+    const pct = Math.round(((actuel - avant) / avant) * 100);
+    return `<span class="delta ${pct >= 0 ? 'up' : 'down'}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)} % vs mois dernier</span>`;
+  };
+  // Histogramme des encaissements sur 12 mois (une seule série : pas de légende, le titre la nomme)
+  const graphiqueEncaissements = (serie = []) => {
+    const now = new Date();
+    const mois = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11 + i, 1));
+      const cle = d.toISOString().slice(0, 7);
+      return { cle, label: MOIS[d.getUTCMonth()].replace('.', ''), annee: d.getUTCFullYear(), total: Number(serie.find((x) => x.mois === cle)?.total || 0) };
+    });
+    const max = Math.max(...mois.map((m) => m.total));
+    if (!max) return empty('Aucun encaissement sur les 12 derniers mois. Les paiements apparaîtront ici.');
+    const pas = [1, 2, 2.5, 5, 10].map((k) => k * 10 ** Math.floor(Math.log10(max / 100 / 4))).find((p) => p * 4 * 100 >= max) || max / 400;
+    const haut = pas * 4 * 100; // centimes
+    const W = 720, H = 220, g = 48, bas = 24, t = 12, slot = (W - g) / 12, bw = Math.min(24, slot * 0.55);
+    const y = (v) => t + (H - t - bas) * (1 - v / haut);
+    const barre = (m, i) => {
+      const x = g + i * slot + (slot - bw) / 2, y0 = y(0), y1 = y(m.total), r = Math.min(4, (y0 - y1) / 2);
+      const path = m.total ? `M${x},${y0}V${y1 + r}Q${x},${y1} ${x + r},${y1}H${x + bw - r}Q${x + bw},${y1} ${x + bw},${y1 + r}V${y0}Z` : '';
+      return `<g class="bar" data-tip="${h(`${m.label} ${m.annee} · ${euros(m.total)}`)}"><rect class="hit" x="${g + i * slot}" y="${t}" width="${slot}" height="${H - t - bas}"/>${path ? `<path d="${path}"/>` : ''}<text x="${g + i * slot + slot / 2}" y="${H - 6}" text-anchor="middle">${h(m.label)}</text></g>`;
+    };
+    const grille = [0, 1, 2, 3, 4].map((k) => `<line x1="${g}" x2="${W}" y1="${y(k * pas * 100)}" y2="${y(k * pas * 100)}"/><text x="${g - 8}" y="${y(k * pas * 100) + 4}" text-anchor="end">${(k * pas).toLocaleString('fr-FR')} €</text>`).join('');
+    return `<div class="chart" data-chart><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Encaissements par mois sur 12 mois"><g class="grid">${grille}</g>${mois.map(barre).join('')}</svg><div class="chart-tip" hidden></div></div>
+      <details class="chart-table"><summary>Voir les chiffres en tableau</summary><div class="table-wrap"><table class="table"><thead><tr><th>Mois</th><th class="num">Encaissé TTC</th></tr></thead><tbody>${mois.map((m) => `<tr><td>${h(m.label)} ${m.annee}</td><td class="num">${euros(m.total)}</td></tr>`).join('')}</tbody></table></div></details>`;
+  };
+
   /* ================================================================ Vues administration */
   const rdvRow = (r) => `<tr><td>${h(fmtDay(r.date))}<br><small class="muted">${h(r.heure)}</small></td><td><strong>${h(r.nom)}</strong><br><small class="muted">${h(r.email)}${r.telephone ? ` · ${h(r.telephone)}` : ''}</small></td><td>${h(r.service)}</td><td>${badge(r.statut)}</td>
     <td class="actions"><select class="select select-sm" data-rdv-statut="${r.id}" aria-label="Statut du rendez-vous">${['confirme', 'termine', 'annule'].map((s) => `<option value="${s}"${s === r.statut ? ' selected' : ''}>${STATUTS[s]}</option>`).join('')}</select>${r.projet_id ? `<button class="btn btn-outline btn-sm" type="button" data-open-projet="${r.projet_id}">Projet</button>` : ''}</td></tr>`;
@@ -336,11 +418,30 @@
   const adminViews = {
     dashboard: { title: 'Tableau de bord', render() {
       const k = data.kpis;
-      return `<div class="kpis kpis-5">
+      const fi = data.finances;
+      const finances = fi ? `<h2 class="dash-title">Chiffres</h2><div class="kpis">
+          <a class="card kpi" href="#factures"><h3>Encaissé ce mois</h3><strong>${euros(fi.encaisse_mois)}</strong>${variation(fi.encaisse_mois, fi.encaisse_mois_prec)}</a>
+          <a class="card kpi" href="#factures"><h3>À encaisser</h3><strong>${euros(fi.a_encaisser)}</strong><span>${fi.factures_a_payer} facture(s) en attente</span></a>
+          <a class="card kpi${fi.factures_en_retard ? ' kpi-alert' : ''}" href="#factures"><h3>En retard</h3><strong>${euros(fi.en_retard)}</strong><span class="${fi.factures_en_retard ? 'hot' : ''}">${fi.factures_en_retard ? `${fi.factures_en_retard} facture(s) à relancer` : 'Aucun retard'}</span></a>
+          <a class="card kpi" href="#boutique"><h3>Boutique ce mois</h3><strong>${euros(fi.boutique_mois)}</strong><span>${fi.commandes_mois} commande(s) payée(s)</span></a>
+        </div>
+        <div class="panels">
+          <div class="card panel panel-wide"><div class="panel-head"><h2>Encaissements des 12 derniers mois</h2><a class="link-arrow" href="#factures">Factures</a></div>${graphiqueEncaissements(data.serie_encaissements)}</div>
+          <div class="card panel"><h2>Activité récente</h2>${data.activite?.length ? `<ul class="row-list activity">${data.activite.map((a) => `<li>${icone(a.type)}<div class="grow">${phraseActivite(a)}</div><a class="muted when" href="#${h(a.lien)}">${h(depuis(a.quand))}</a></li>`).join('')}</ul>` : empty('Aucune activité pour le moment.')}</div>
+          <div class="card panel"><h2>À faire en priorité</h2><ul class="row-list">
+            ${(data.factures_en_retard || []).map((f) => `<li>${icone('relance')}<div class="grow"><strong>${h(f.numero)} · ${h(f.entreprise || f.nom || f.email)}</strong><small class="muted">${euros(f.montant_ttc)} · en retard de ${+f.retard} j</small></div><a class="link-arrow" href="#factures">Relancer</a></li>`).join('')}
+            ${k.demandes_a_traiter ? `<li>${icone('demande')}<div class="grow"><strong>${k.demandes_a_traiter} demande(s) de contact</strong><small class="muted">En attente de réponse</small></div><a class="link-arrow" href="#demandes">Ouvrir</a></li>` : ''}
+            ${data.messages.length ? `<li>${icone('message')}<div class="grow"><strong>Messages clients</strong><small class="muted">Dernier : ${h(data.messages[0].nom || data.messages[0].email)} · ${h(depuis(data.messages[0].cree_le))}</small></div><a class="link-arrow" href="#projets">Voir</a></li>` : ''}
+            ${!(data.factures_en_retard || []).length && !k.demandes_a_traiter && !data.messages.length ? `<li><div class="grow muted">Rien d’urgent. Tout est à jour ✅</div></li>` : ''}
+          </ul>
+          ${data.top_clients?.length ? `<h2 class="sub">Meilleurs clients ${new Date().getFullYear()}</h2><ul class="row-list">${data.top_clients.map((c, i) => `<li><span class="rank">${i + 1}</span><div class="grow"><strong>${h(c.entreprise || c.nom || c.email)}</strong><small class="muted">${c.n} facture(s) payée(s)</small></div><strong>${euros(c.total)}</strong></li>`).join('')}</ul>` : ''}
+          </div>
+        </div><h2 class="dash-title">Activité commerciale</h2>` : '';
+      return `${finances}<div class="kpis kpis-5">
           <a class="card kpi" href="#rdv"><h3>Rendez-vous à venir</h3><strong>${k.rdv_a_venir}</strong><span class="hot">Voir l’agenda</span></a>
           <a class="card kpi" href="#demandes"><h3>Demandes à traiter</h3><strong>${k.demandes_a_traiter}</strong><span class="hot">Formulaire de contact</span></a>
           <a class="card kpi" href="#projets"><h3>Projets actifs</h3><strong>${k.projets_actifs}</strong><span>Nouveaux, en cours, en pause</span></a>
-          <a class="card kpi" href="#clients"><h3>Clients</h3><strong>${k.clients}</strong><span>Comptes créés</span></a>
+          <a class="card kpi" href="#clients"><h3>Espaces clients</h3><strong>${k.clients}</strong><span>Comptes avec accès</span></a>
           <a class="card kpi" href="#assistant"><h3>Questions à l’assistant</h3><strong>${k.questions_assistant_7j}</strong><span>7 derniers jours</span></a>
         </div>
         <div class="panels">
