@@ -1,7 +1,8 @@
 // Paiements Stripe : sessions Checkout (page de paiement hébergée par Stripe) et webhooks signés.
 // Aucune donnée de carte ne transite par le site : Stripe gère la saisie, 3D Secure, Apple Pay et Google Pay.
 //
-// Secrets Cloudflare : STRIPE_SECRET_KEY (sk_test_… ou sk_live_…), STRIPE_WEBHOOK_SECRET (whsec_…)
+// Secrets Cloudflare : STRIPE_SECRET_KEY, de préférence une clé restreinte (rk_test_… puis rk_live_…) limitée à
+// « Checkout Sessions : écriture » ; STRIPE_WEBHOOK_SECRET (whsec_…)
 // STRIPE_API (facultatif) : autre adresse de l'API, pour les tests automatisés uniquement.
 
 import { HttpError } from './lib.js';
@@ -26,7 +27,7 @@ async function stripe(env, method, path, params) {
     headers: {
       Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Stripe-Version': '2024-06-20',
+      'Stripe-Version': '2026-08-26.dahlia',
     },
     body: params ? formEncode(params) : undefined,
   });
@@ -42,9 +43,11 @@ async function stripe(env, method, path, params) {
  * Ouvre une page de paiement Stripe et renvoie son adresse.
  * lignes : [{ nom, quantite, montant_unitaire_ttc (centimes) }]
  */
-export function creerSessionPaiement(env, { lignes, email, reference, succes, annulation, metadata }) {
+export function creerSessionPaiement(env, { lignes, email, reference, succes, annulation, metadata, parcours }) {
   return stripe(env, 'POST', 'checkout/sessions', {
     mode: 'payment',
+    // Étiquette visible dans le tableau de bord Stripe pour comparer les parcours (factures / boutique)
+    integration_identifier: parcours,
     locale: 'fr',
     client_reference_id: reference,
     customer_email: email || undefined,

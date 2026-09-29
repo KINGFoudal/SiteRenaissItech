@@ -26,7 +26,7 @@
     "ADMIN_EMAILS": "contact@renaissance-itech.com,renaissanceitech@gmail.com",
     // Anti-robot Cloudflare Turnstile : clé publique (la clé secrète TURNSTILE_SECRET est un secret Cloudflare)
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFDtPw9430OW7Dv4"
-    // STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET : secrets Stripe pour le paiement en ligne (factures et boutique).
+    // STRIPE_SECRET_KEY (clé restreinte rk_… conseillée) et STRIPE_WEBHOOK_SECRET : secrets Stripe (factures et boutique).
     // BREVO_API_KEY : secret à ajouter dans Cloudflare. BREVO_DOI_TEMPLATE_ID (facultatif) : ID du modèle de double opt-in (voir NEWSLETTER.md)
   },
   "ai": { "binding": "AI" },

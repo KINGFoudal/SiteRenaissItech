@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS commandes (
   lignes          TEXT NOT NULL,                         -- [{ "id", "nom", "quantite", "prix_ht" }]
   montant_ht      INTEGER NOT NULL,
   montant_ttc     INTEGER NOT NULL,
-  statut          TEXT NOT NULL DEFAULT 'en_attente',    -- en_attente | payee | expiree | remboursee
+  statut          TEXT NOT NULL DEFAULT 'en_attente',    -- en_attente | payee | expiree | echouee | remboursee
   stripe_session  TEXT UNIQUE,
   facture_id      INTEGER REFERENCES factures(id),
   cree_le         TEXT NOT NULL DEFAULT (datetime('now')),

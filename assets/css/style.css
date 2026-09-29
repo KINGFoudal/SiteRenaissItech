@@ -1023,7 +1023,7 @@ body.no-scroll { overflow: hidden; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .status-payee { background: #DCFCE7; color: #166534; }
 .status-a_payer { background: #FFF1E8; color: #C2410C; }
-.status-retard { background: #FEE2E2; color: #991B1B; }
+.status-retard, .status-echouee { background: #FEE2E2; color: #991B1B; }
 .status-annulee, .status-expiree { background: #F3F4F6; color: #6B7280; }
 .status-en_attente { background: #F3F4F6; color: #374151; }
 @media (max-width: 640px) { .lignes-facture .ligne { grid-template-columns: 1fr 60px; } .regle { grid-template-columns: 1fr; } }

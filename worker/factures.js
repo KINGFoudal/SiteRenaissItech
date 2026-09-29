@@ -291,6 +291,7 @@ export async function facturePayer(request, env) {
     succes: `${b}/paiement-confirme?session={CHECKOUT_SESSION_ID}`,
     annulation: `${b}/facture?t=${encodeURIComponent(f.jeton)}`,
     metadata: { type: 'facture', facture_id: String(f.id), numero: f.numero },
+    parcours: 'rit_factures_qzkvmwpa',
   });
   await env.DB.prepare('UPDATE factures SET stripe_session = ? WHERE id = ?').bind(session.id, f.id).run();
   return Response.redirect(session.url, 303);
@@ -338,6 +339,7 @@ export async function commander(request, env) {
     succes: `${b}/paiement-confirme?session={CHECKOUT_SESSION_ID}`,
     annulation: `${b}/boutique?paiement=annule`,
     metadata: { type: 'commande', commande_id: String(meta.last_row_id), reference },
+    parcours: 'rit_boutique_hdjtnrxe',
   });
   await env.DB.prepare('UPDATE commandes SET stripe_session = ? WHERE id = ?').bind(session.id, meta.last_row_id).run();
   return json({ url: session.url });
@@ -398,6 +400,15 @@ export async function webhook(request, env, ctx) {
     if ((evt.type === 'checkout.session.completed' || evt.type === 'checkout.session.async_payment_succeeded') && s.payment_status === 'paid') {
       if (md.type === 'facture') await factureReglee(env, int(md.facture_id), s);
       if (md.type === 'commande') await commandeReglee(env, int(md.commande_id), s);
+    }
+    // Paiement différé (prélèvement, virement…) finalement refusé : le client peut réessayer, l'administrateur est prévenu
+    if (evt.type === 'checkout.session.async_payment_failed') {
+      if (md.type === 'facture') await env.DB.prepare('UPDATE factures SET stripe_session = NULL WHERE id = ? AND stripe_session = ?').bind(int(md.facture_id), s.id).run();
+      if (md.type === 'commande') await env.DB.prepare("UPDATE commandes SET statut = 'echouee' WHERE id = ? AND statut = 'en_attente'").bind(int(md.commande_id)).run();
+      await sendEmail(env, {
+        to: notifyEmail(env), subject: `Paiement refusé : ${clean(md.numero || md.reference || '', 40)}`,
+        html: emailLayout('Paiement refusé', `<p>Le paiement de <strong>${esc(md.numero || md.reference || '')}</strong> a été refusé par la banque du client. ${md.type === 'facture' ? 'La facture reste à payer : les relances continuent.' : 'La commande n’est pas réglée.'}</p>${emailButton(`${base(env)}/admin#${md.type === 'facture' ? 'factures' : 'boutique'}`, 'Voir dans l’administration')}`),
+      });
     }
     if (evt.type === 'checkout.session.expired' && md.type === 'commande') {
       await env.DB.prepare("UPDATE commandes SET statut = 'expiree' WHERE id = ? AND statut = 'en_attente'").bind(int(md.commande_id)).run();

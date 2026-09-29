@@ -450,7 +450,7 @@
           </tbody></table></div></div>
         <div class="card panel"><h2>Commandes</h2>${d.commandes.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Commande</th><th>Client</th><th>Contenu</th><th class="num">Total TTC</th><th>Statut</th><th>Facture</th></tr></thead><tbody>
           ${d.commandes.map((c) => `<tr><td><strong>${h(c.reference)}</strong><br><small class="muted">${h(fmtSql(c.cree_le))}</small></td><td>${h(c.email || '—')}</td><td><small>${c.lignes.map((l) => `${+l.quantite} × ${h(l.nom)}`).join('<br>')}</small></td><td class="num">${euros(c.montant_ttc)}</td>
-            <td><span class="status status-${h(c.statut)}">${h({ payee: 'Payée', en_attente: 'Paiement en cours', expiree: 'Abandonnée', remboursee: 'Remboursée' }[c.statut] || c.statut)}</span></td><td>${h(c.facture || '')}</td></tr>`).join('')}
+            <td><span class="status status-${h(c.statut)}">${h({ payee: 'Payée', en_attente: 'Paiement en cours', expiree: 'Abandonnée', echouee: 'Paiement refusé', remboursee: 'Remboursée' }[c.statut] || c.statut)}</span></td><td>${h(c.facture || '')}</td></tr>`).join('')}
           </tbody></table></div>` : empty('Aucune commande pour le moment.')}</div>`;
     } },
     compte: { title: 'Mon compte', async load() { cache.totp = await api('/api/auth/totp/statut'); }, render() {
