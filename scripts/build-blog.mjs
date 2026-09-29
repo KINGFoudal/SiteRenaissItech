@@ -39,7 +39,7 @@ const CTA = {
   design: ['Besoin d’une identité qui marque ?', 'Maquettes, interfaces et identité visuelle pour votre marque.'],
 };
 
-const PAGES = ['index.html', 'services.html', 'outils-sur-mesure.html', 'formations.html', 'rendez-vous.html', 'boutique.html', 'blog.html', 'contact.html', 'a-propos.html', 'mentions-legales.html', 'cookies.html', 'plan-du-site.html'];
+const PAGES = ['index.html', 'services.html', 'formations.html', 'rendez-vous.html', 'boutique.html', 'blog.html', 'contact.html', 'a-propos.html', 'mentions-legales.html', 'cookies.html', 'plan-du-site.html'];
 
 /* ---------------------------------------------------------------- utilitaires */
 
@@ -261,7 +261,6 @@ const page = ({ title, desc, canonical, head = '', body, type = 'website', image
           <h2>Services</h2>
           <a href="/services#ia-privee">IA privée &amp; souveraine</a>
           <a href="/services#automatisation">Automatisation IA</a>
-          <a href="/outils-sur-mesure">Outils métier sur mesure</a>
           <a href="/formations">Formation IA des équipes</a>
           <a href="/services#cybersecurite">Cybersécurité</a>
           <a href="/services">Tous nos services</a>
