@@ -279,7 +279,7 @@
     get(k, d) { try { return JSON.parse(sessionStorage.getItem(k)) ?? d; } catch { return d; } },
     set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
   };
-  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   // Mise en forme légère des réponses : listes, liens vers les pages du site et emails
   const formatAnswer = (t) => {
     const lines = esc(t).split(/\n+/);
@@ -540,6 +540,159 @@
     video.removeAttribute('autoplay');
     video.pause();
     video.controls = true;
+  }
+
+
+  /* ---------- Paiement : outils communs ---------- */
+  const euros = (c) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const stock = {
+    get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* navigation privée */ } },
+  };
+
+  /* ---------- Boutique : achat direct ou panier, paiement Stripe ---------- */
+  const cartEl = $('[data-cart]');
+  if (cartEl) {
+    let catalogue = [];
+    let panier = stock.get('rit-panier', []);
+    const fab = $('[data-cart-open]');
+    const save = () => { stock.set('rit-panier', panier); draw(); };
+    const produit = (id) => catalogue.find((p) => p.id === id);
+
+    const payer = async (lignes, btn) => {
+      const err = $('[data-cart-err]');
+      err.hidden = true;
+      btn.disabled = true; const label = btn.textContent; btn.textContent = 'Redirection vers le paiement…';
+      try {
+        const res = await fetch('/api/boutique/commande', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lignes }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error || 'Le paiement n’a pas pu démarrer.');
+        location.href = data.url;
+      } catch (ex) {
+        btn.disabled = false; btn.textContent = label;
+        if (cartEl.hidden) toast(ex.message); else { err.textContent = ex.message; err.hidden = false; }
+      }
+    };
+
+    const draw = () => {
+      panier = panier.filter((l) => produit(l.id));
+      const n = panier.reduce((t, l) => t + l.quantite, 0);
+      fab.hidden = !n;
+      $('[data-cart-count]').textContent = n;
+      const total = panier.reduce((t, l) => t + l.quantite * produit(l.id).prix_ttc, 0);
+      $('[data-cart-total]').textContent = euros(total);
+      $('[data-cart-pay]').textContent = `Payer ${euros(total)}`;
+      $('[data-cart-pay]').disabled = !n;
+      $('[data-cart-list]').innerHTML = n ? panier.map((l) => {
+        const p = produit(l.id);
+        return `<li><div><strong>${esc(p.nom)}</strong><small>${euros(p.prix_ttc)} TTC</small></div>
+          <div class="qty"><button type="button" data-qty="${esc(l.id)}" data-d="-1" aria-label="Retirer un">−</button><span>${l.quantite}</span><button type="button" data-qty="${esc(l.id)}" data-d="1" aria-label="Ajouter un">+</button></div></li>`;
+      }).join('') : '<li class="empty-state">Votre panier est vide.</li>';
+    };
+    const ouvrir = (on) => { cartEl.hidden = !on; document.body.classList.toggle('no-scroll', on); if (on) $('[data-cart-pay]').focus(); };
+
+    fetch('/api/boutique/catalogue').then((r) => r.json()).then((c) => {
+      catalogue = c.produits || [];
+      $('[data-cart-tva]').textContent = c.taux_tva ? `Dont TVA ${String(c.taux_tva).replace('.', ',')} %` : (c.mention_tva || '');
+      catalogue.forEach((p) => {
+        const card = $(`[data-produit="${CSS.escape(p.id)}"]`);
+        if (!card) return;
+        const ctas = $('.product-ctas', card);
+        ctas.insertAdjacentHTML('beforebegin', `<p class="price"><strong>${euros(p.prix_ttc)}</strong> <small>TTC</small></p>`);
+        ctas.innerHTML = `<button class="btn btn-primary btn-sm" type="button" data-buy="${esc(p.id)}">Acheter</button>
+          <button class="btn btn-outline btn-sm" type="button" data-add="${esc(p.id)}">Ajouter au panier</button>
+          <a class="link-arrow" href="/contact?produit=${encodeURIComponent(p.nom)}">Une question avant d’acheter ?</a>`;
+      });
+      draw();
+    }).catch(() => {});
+
+    document.addEventListener('click', (e) => {
+      const buy = e.target.closest('[data-buy]');
+      if (buy) return payer([{ id: buy.dataset.buy, quantite: 1 }], buy); // achat direct : 1 clic ici, 1 clic sur Stripe
+      const add = e.target.closest('[data-add]');
+      if (add) {
+        const l = panier.find((x) => x.id === add.dataset.add);
+        if (l) l.quantite = Math.min(10, l.quantite + 1); else panier.push({ id: add.dataset.add, quantite: 1 });
+        save(); toast('Ajouté au panier'); return ouvrir(true);
+      }
+      const q = e.target.closest('[data-qty]');
+      if (q) {
+        const l = panier.find((x) => x.id === q.dataset.qty);
+        l.quantite = Math.max(0, Math.min(10, l.quantite + Number(q.dataset.d)));
+        panier = panier.filter((x) => x.quantite > 0); return save();
+      }
+      if (e.target.closest('[data-cart-open]')) return ouvrir(true);
+      if (e.target.closest('[data-cart-close]')) return ouvrir(false);
+      if (e.target.closest('[data-cart-pay]')) return payer(panier, e.target.closest('[data-cart-pay]'));
+    });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !cartEl.hidden) ouvrir(false); });
+    if (new URLSearchParams(location.search).get('paiement') === 'annule') toast('Paiement annulé : votre panier est conservé.');
+  }
+
+  /* ---------- Facture consultable par lien (email, espace client) ---------- */
+  const factureEl = $('[data-facture]');
+  if (factureEl) {
+    const t = new URLSearchParams(location.search).get('t') || '';
+    $('[data-print]')?.addEventListener('click', () => print());
+    fetch(`/api/facture?t=${encodeURIComponent(t)}`).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Facture introuvable.');
+      const { facture: f, emetteur: e } = d;
+      const fr = (s) => new Date(`${s.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      const taux = f.taux_tva / 100;
+      const statut = f.statut === 'payee' ? `<span class="status status-termine">Payée le ${fr(f.payee_le)}</span>` : f.statut === 'annulee' ? '<span class="status status-annule">Annulée</span>' : `<span class="status status-nouveau">À régler avant le ${fr(f.echeance)}</span>`;
+      factureEl.innerHTML = `<header class="invoice-head">
+          <div><strong class="invoice-brand">${esc(e.raison_sociale)}</strong><p>${esc(e.adresse).replace(/\n/g, '<br>')}</p>${e.siret ? `<p>SIRET ${esc(e.siret)}</p>` : ''}${e.tva_intracom ? `<p>TVA ${esc(e.tva_intracom)}</p>` : ''}</div>
+          <div class="invoice-meta"><h1>Facture ${esc(f.numero)}</h1><p>Émise le ${fr(f.emise_le)}</p><p>Échéance : ${fr(f.echeance)}</p>${statut}</div>
+        </header>
+        <div class="invoice-client"><span>Facturé à</span><strong>${esc(f.entreprise || f.nom || '')}</strong><p>${esc(f.nom && f.entreprise ? f.nom : '')}</p><p>${esc(f.email)}</p></div>
+        <p class="invoice-objet"><strong>Objet :</strong> ${esc(f.objet)}</p>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Désignation</th><th>Qté</th><th>Prix unitaire HT</th><th>Total HT</th></tr></thead><tbody>
+          ${f.lignes.map((l) => `<tr><td>${esc(l.libelle)}</td><td>${+l.quantite}</td><td>${euros(l.prix_unitaire)}</td><td>${euros(l.quantite * l.prix_unitaire)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="invoice-totals"><div><span>Total HT</span><strong>${euros(f.montant_ht)}</strong></div>
+          ${taux ? `<div><span>TVA ${String(taux).replace('.', ',')} %</span><strong>${euros(f.montant_ttc - f.montant_ht)}</strong></div>` : ''}
+          <div class="grand"><span>Total TTC</span><strong>${euros(f.montant_ttc)}</strong></div></div>
+        ${!taux && e.mention_tva ? `<p class="invoice-note">${esc(e.mention_tva)}</p>` : ''}
+        ${e.iban && f.statut === 'a_payer' ? `<p class="invoice-note">Règlement par virement : IBAN ${esc(e.iban)}${e.bic ? ` · BIC ${esc(e.bic)}` : ''} · référence ${esc(f.numero)}</p>` : ''}
+        ${e.conditions ? `<p class="invoice-note">${esc(e.conditions)}</p>` : ''}`;
+      document.title = `Facture ${f.numero} | Renaissance iTech`;
+      $('[data-facture-actions]').hidden = false;
+      if (d.paiement) { const b = $('[data-facture-payer]'); b.hidden = false; b.href = `/api/paiement/facture?t=${encodeURIComponent(t)}`; b.textContent = `Payer ${euros(f.montant_ttc)} par carte`; }
+    }).catch((ex) => { factureEl.innerHTML = `<p class="form-msg err">${esc(ex.message)}</p>`; });
+  }
+
+  /* ---------- Confirmation de paiement (retour de Stripe) ---------- */
+  const payEl = $('[data-paiement]');
+  if (payEl) {
+    const session = new URLSearchParams(location.search).get('session') || '';
+    const titre = $('[data-paiement-titre]'), texte = $('[data-paiement-texte]');
+    let essais = 0;
+    const verifier = async () => {
+      try {
+        const r = await fetch(`/api/paiement/statut?session=${encodeURIComponent(session)}`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        if (d.statut === 'payee') {
+          $('[data-paiement-eyebrow]').textContent = d.type === 'commande' ? `Commande ${d.reference}` : `Facture ${d.reference}`;
+          titre.textContent = 'Merci, votre paiement est confirmé';
+          texte.textContent = d.type === 'commande' ? 'Un email de confirmation et votre facture viennent de vous être envoyés. Nous vous contactons sous 24 h ouvrées pour planifier la prestation.' : 'Un reçu vient de vous être envoyé par email. Merci pour votre confiance.';
+          const recap = $('[data-paiement-recap]');
+          recap.innerHTML = `${(d.lignes || []).map((l) => `<div><span>${l.quantite} × ${esc(l.nom)}</span><strong>${euros(l.quantite * l.prix_ttc)}</strong></div>`).join('')}<div><span>Total payé</span><strong>${euros(d.montant)}</strong></div>`;
+          recap.hidden = false;
+          if (d.facture) { const b = $('[data-paiement-facture]'); b.href = d.facture; b.hidden = false; }
+          return;
+        }
+        if (++essais < 10) return setTimeout(verifier, 2000);
+        titre.textContent = 'Paiement en cours de confirmation';
+        texte.textContent = 'Votre banque n’a pas encore confirmé le paiement. Vous recevrez un email dès qu’il sera validé. Aucun nouveau paiement n’est nécessaire.';
+      } catch {
+        titre.textContent = 'Paiement introuvable';
+        texte.textContent = 'Si vous avez été débité, écrivez-nous à contact@renaissance-itech.com avec la date et le montant : nous vérifions immédiatement.';
+      }
+    };
+    if (new URLSearchParams(location.search).get('erreur')) { titre.textContent = 'Lien de paiement invalide'; texte.textContent = 'Ce lien de facture n’existe pas ou a expiré. Contactez-nous à contact@renaissance-itech.com.'; }
+    else verifier();
   }
 
 })();

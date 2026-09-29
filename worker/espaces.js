@@ -7,6 +7,8 @@ import {
 import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
 import { journal } from './securite.js';
+import { facturesClient } from './factures.js';
+import { paiementActif } from './stripe.js';
 
 const STATUTS_PROJET = ['nouveau', 'en_cours', 'en_pause', 'termine', 'annule'];
 const STATUTS_RDV = ['confirme', 'annule', 'termine'];
@@ -33,7 +35,8 @@ export async function clientMoi(request, env) {
   // Les messages de l'équipe sont marqués comme lus à l'ouverture de l'espace
   await env.DB.prepare("UPDATE messages SET lu = 1 WHERE auteur = 'equipe' AND projet_id IN (SELECT id FROM projets WHERE client_id = ?)").bind(client.id).run();
 
-  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0 });
+  const factures = await facturesClient(env, client.id);
+  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0, factures, paiement: paiementActif(env) });
 }
 
 export async function clientMessage(request, env, ctx) {

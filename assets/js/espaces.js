@@ -33,6 +33,10 @@
   const badge = (s) => `<span class="status status-${h(s)}">${h(STATUTS[s] || s)}</span>`;
   const progress = (n) => `<div class="progress" role="progressbar" aria-valuenow="${+n}" aria-valuemin="0" aria-valuemax="100"><i style="width:${+n}%"></i></div>`;
   const initials = (s) => (s || '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
+  const euros = (c) => `${(Number(c) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const statutFacture = (f, today = new Date().toISOString().slice(0, 10)) => (f.statut === 'payee' ? '<span class="status status-payee">Payée</span>'
+    : f.statut === 'annulee' ? '<span class="status status-annulee">Annulée</span>'
+      : f.echeance < today ? '<span class="status status-retard">En retard</span>' : '<span class="status status-a_payer">À payer</span>');
   const empty = (txt) => `<p class="empty-state">${h(txt)}</p>`;
   const thread = (messages, espace) => (messages.length ? `<div class="thread">${messages.map((m) => {
     const moi = (espace === 'client') === (m.auteur === 'client');
@@ -284,6 +288,16 @@
       if (!withMsg.length) return `<div class="card panel">${empty('Aucun message pour le moment. Vos échanges avec l’équipe apparaîtront ici.')}</div>`;
       return withMsg.map((p) => `<div class="card panel"><h2>${h(p.titre)}</h2>${thread(p.messages, 'client')}<form class="reply-form" data-reply="${p.id}"><label class="sr-only" for="m-${p.id}">Votre message</label><textarea class="textarea" id="m-${p.id}" name="contenu" rows="2" placeholder="Répondre…" required></textarea><button class="btn btn-primary btn-sm" type="submit">Envoyer</button></form></div>`).join('');
     } },
+    factures: { title: 'Mes factures', render() {
+      const rows = data.factures || [];
+      if (!rows.length) return `<div class="card panel">${empty('Aucune facture pour le moment.')}</div>`;
+      const du = rows.filter((f) => f.statut === 'a_payer').reduce((t, f) => t + f.montant_ttc, 0);
+      return `${du ? `<div class="card panel"><h2>Reste à régler : ${euros(du)}</h2><p class="form-note">${data.paiement ? 'Réglez en un clic par carte, Apple Pay ou Google Pay. Paiement sécurisé par Stripe.' : 'Règlement par virement : les coordonnées bancaires figurent sur chaque facture.'}</p></div>` : ''}
+        <div class="card panel table-wrap"><table class="table"><thead><tr><th>Facture</th><th>Objet</th><th class="num">Montant</th><th>Échéance</th><th>Statut</th><th></th></tr></thead><tbody>
+        ${rows.map((f) => `<tr><td><strong>${h(f.numero)}</strong><br><small class="muted">${h(fmtDay(f.emise_le))}</small></td><td>${h(f.objet)}</td><td class="num">${euros(f.montant_ttc)}</td><td>${h(fmtDay(f.echeance))}</td><td>${statutFacture(f)}</td>
+          <td class="actions"><a class="btn btn-outline btn-sm" href="/facture?t=${encodeURIComponent(f.jeton)}" target="_blank" rel="noopener">Voir</a>${f.statut === 'a_payer' && data.paiement ? `<a class="btn btn-primary btn-sm" href="/api/paiement/facture?t=${encodeURIComponent(f.jeton)}">Payer</a>` : ''}</td></tr>`).join('')}
+        </tbody></table></div>`;
+    } },
     parametres: { title: 'Mon compte', render() {
       const c = data.client;
       return `<form class="card panel settings-form" data-profil>
@@ -367,6 +381,78 @@
         <p class="form-note">Seuls les clients premium peuvent se connecter à l’espace client, avec leur email et un mot de passe. À la création, un mot de passe provisoire est généré automatiquement et envoyé au client par email ; il devra le remplacer par le sien à sa première connexion.</p>
         ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Client</th><th>Entreprise</th><th>Accès espace client</th><th>Projets</th><th>RDV</th><th>Dernière connexion</th><th></th></tr></thead><tbody>${rows.map((c) => `<tr><td><strong>${h(c.nom || '')}</strong><br><a href="mailto:${h(c.email)}"><small>${h(c.email)}</small></a>${c.telephone ? `<br><small class="muted">${h(c.telephone)}</small>` : ''}</td><td>${h(c.entreprise || '')}</td><td>${acces(c)}</td><td>${+c.nb_projets}</td><td>${+c.nb_rdv}</td><td><small>${c.derniere_connexion ? h(fmtSql(c.derniere_connexion)) : 'Jamais'}</small></td><td class="actions">${actions(c)}</td></tr>`).join('')}</tbody></table></div>` : empty('Aucun client pour le moment.')}</div>`;
     } },
+    factures: { title: 'Factures', async load() { await adminList('factures', '/api/admin/factures'); }, render() {
+      const d = cache.factures; const rows = d.factures; const today = d.aujourdhui;
+      const aPayer = rows.filter((f) => f.statut === 'a_payer');
+      const retard = aPayer.filter((f) => f.echeance < today);
+      const mois = today.slice(0, 7);
+      const encaisse = rows.filter((f) => f.statut === 'payee' && (f.payee_le || '').startsWith(mois)).reduce((t, f) => t + f.montant_ttc, 0);
+      const fa = d.facturation;
+      const alertes = [
+        !fa.siret || !fa.adresse ? 'Complétez vos mentions légales (adresse, SIRET) dans « Mentions légales et paiement » avant d’envoyer une facture : elles sont obligatoires.' : '',
+        !Number(fa.taux_tva) && !fa.mention_tva ? 'TVA à 0 % sans mention : si vous êtes en franchise, indiquez « TVA non applicable, art. 293 B du CGI ».' : '',
+        !d.paiement ? 'Paiement par carte non activé (clés Stripe absentes) : vos factures proposent le virement uniquement.' : '',
+      ].filter(Boolean);
+      const act = (f) => `<select class="select select-sm" data-facture-action="${f.id}" aria-label="Actions sur ${h(f.numero)}"><option value="">Actions…</option>
+        <option value="voir">Voir la facture</option>
+        ${f.statut === 'a_payer' ? `<option value="payee">Marquer payée</option><option value="relancer">Relancer maintenant</option><option value="renvoyer">Renvoyer la facture</option>
+        <option value="${f.relances_actives ? 'relances_off' : 'relances_on'}">${f.relances_actives ? 'Suspendre les relances auto' : 'Réactiver les relances auto'}</option><option value="annuler">Annuler la facture</option>` : ''}</select>`;
+      const r = d.regles;
+      return `${alertes.map((a) => `<p class="warn-box">${h(a)}</p>`).join('')}
+        <div class="kpis">
+          <div class="card kpi"><h3>À encaisser</h3><strong class="kpi-small">${euros(aPayer.reduce((t, f) => t + f.montant_ttc, 0))}</strong><span>${aPayer.length} facture(s)</span></div>
+          <div class="card kpi"><h3>En retard</h3><strong class="kpi-small">${euros(retard.reduce((t, f) => t + f.montant_ttc, 0))}</strong><span class="hot">${retard.length} facture(s)</span></div>
+          <div class="card kpi"><h3>Encaissé ce mois</h3><strong class="kpi-small">${euros(encaisse)}</strong><span>factures payées</span></div>
+          <div class="card kpi"><h3>Relances auto</h3><strong class="kpi-small">${r.actives ? 'Actives' : 'En pause'}</strong><span>${r.etapes.map((e) => `J+${e.jours}`).join(' · ')}</span></div>
+        </div>
+        <div class="card panel"><div class="panel-head"><h2>Factures</h2><button class="btn btn-primary btn-sm" type="button" data-new-facture>+ Nouvelle facture</button></div>
+          ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Facture</th><th>Client</th><th class="num">Montant TTC</th><th>Échéance</th><th>Statut</th><th>Relances</th><th></th></tr></thead><tbody>
+          ${rows.map((f) => `<tr><td><strong>${h(f.numero)}</strong><br><small class="muted">${h(f.objet)}</small></td><td>${h(f.nom || '')}<br><small class="muted">${h(f.email)}</small></td><td class="num">${euros(f.montant_ttc)}</td>
+            <td>${h(fmtDay(f.echeance))}${f.statut === 'a_payer' && f.echeance < today ? `<br><small class="hot">+${Math.round((new Date(today) - new Date(f.echeance)) / 864e5)} j</small>` : ''}</td>
+            <td>${statutFacture(f, today)}${f.mode_paiement ? `<br><small class="muted">${h(f.mode_paiement)}</small>` : ''}</td>
+            <td><small>${+f.nb_relances}${f.derniere_relance ? ` · ${h(fmtSql(f.derniere_relance))}` : ''}${f.statut === 'a_payer' && !f.relances_actives ? '<br>suspendues' : ''}</small></td><td class="actions">${act(f)}</td></tr>`).join('')}
+          </tbody></table></div>` : empty('Aucune facture. Créez la première : le client la reçoit par email avec un bouton de paiement.')}</div>
+        <form class="card panel settings-form" data-regles>
+          <h2>Relances automatiques</h2>
+          <p class="form-note">Chaque matin, les factures en retard reçoivent l’étape atteinte (une seule à la fois). Les relances s’arrêtent dès que la facture est payée. Variables : {numero}, {montant}, {echeance}, {retard}.</p>
+          <label class="checkline"><input type="checkbox" name="actives" ${r.actives ? 'checked' : ''}> Relances automatiques activées</label>
+          <div class="regles-grid">${r.etapes.map((e, i) => `<div class="regle"><div><label class="field-label" for="rj${i}">Jours après échéance</label><input class="input" id="rj${i}" name="jours${i}" type="number" min="1" max="120" value="${+e.jours}"></div>
+            <div class="form-grid"><div><label class="field-label" for="rn${i}">Nom de l’étape</label><input class="input" id="rn${i}" name="nom${i}" value="${h(e.nom)}"></div>
+            <div><label class="field-label" for="rs${i}">Objet de l’email</label><input class="input" id="rs${i}" name="sujet${i}" value="${h(e.sujet)}"></div>
+            <div><label class="field-label" for="rm${i}">Message</label><textarea class="textarea" id="rm${i}" name="message${i}">${h(e.message)}</textarea></div></div></div>`).join('')}</div>
+          <div><button class="btn btn-primary" type="submit">Enregistrer le calendrier</button></div>
+        </form>
+        <form class="card panel settings-form" data-facturation>
+          <h2>Mentions légales et paiement</h2>
+          <p class="form-note">Ces informations apparaissent sur chaque facture. Les factures déjà émises affichent les mentions en vigueur au moment de leur consultation.</p>
+          <div class="form-grid">
+            <div class="two"><div><label class="field-label" for="fa-rs">Raison sociale</label><input class="input" id="fa-rs" name="raison_sociale" value="${h(fa.raison_sociale)}"></div>
+              <div><label class="field-label" for="fa-siret">SIRET</label><input class="input" id="fa-siret" name="siret" value="${h(fa.siret)}"></div></div>
+            <div><label class="field-label" for="fa-adr">Adresse</label><textarea class="textarea" id="fa-adr" name="adresse" rows="2">${h(fa.adresse)}</textarea></div>
+            <div class="two"><div><label class="field-label" for="fa-tva">Taux de TVA par défaut (%)</label><input class="input" id="fa-tva" name="taux_tva" inputmode="decimal" value="${h(fa.taux_tva)}"></div>
+              <div><label class="field-label" for="fa-tvai">N° de TVA intracommunautaire</label><input class="input" id="fa-tvai" name="tva_intracom" value="${h(fa.tva_intracom)}"></div></div>
+            <div><label class="field-label" for="fa-mtva">Mention TVA (si TVA à 0 %)</label><input class="input" id="fa-mtva" name="mention_tva" value="${h(fa.mention_tva)}" placeholder="TVA non applicable, art. 293 B du CGI"></div>
+            <div class="two"><div><label class="field-label" for="fa-iban">IBAN (virement)</label><input class="input" id="fa-iban" name="iban" value="${h(fa.iban)}"></div>
+              <div><label class="field-label" for="fa-bic">BIC</label><input class="input" id="fa-bic" name="bic" value="${h(fa.bic)}"></div></div>
+            <div><label class="field-label" for="fa-delai">Délai de paiement (jours)</label><input class="input" id="fa-delai" name="delai_paiement" type="number" min="0" max="60" value="${+fa.delai_paiement}"></div>
+            <div><label class="field-label" for="fa-cond">Conditions de paiement et pénalités</label><textarea class="textarea" id="fa-cond" name="conditions" rows="3">${h(fa.conditions)}</textarea></div>
+            <div><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+          </div>
+        </form>`;
+    } },
+    boutique: { title: 'Boutique', async load() { await adminList('boutique', '/api/admin/boutique'); }, render() {
+      const d = cache.boutique; const t = Number(d.taux_tva) || 0;
+      return `${!d.paiement ? '<p class="warn-box">Paiement par carte non activé : ajoutez les clés Stripe (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) dans Cloudflare. En attendant, la boutique reste en « Demander un devis ».</p>' : ''}
+        <div class="card panel"><h2>Produits</h2><p class="form-note">Un produit avec un prix et « Vente en ligne » cochée affiche les boutons « Acheter » et « Ajouter au panier ». Sans prix, il reste sur devis. TVA appliquée : ${String(t).replace('.', ',')} % (réglable dans Factures).</p>
+          <div class="table-wrap"><table class="table"><thead><tr><th>Produit</th><th>Prix HT (€)</th><th>Vente en ligne</th><th></th></tr></thead><tbody>
+          ${d.produits.map((p) => `<tr data-produit-row="${h(p.id)}"><td><strong>${h(p.nom)}</strong></td><td><input class="input" name="prix_ht" inputmode="decimal" style="max-width:130px" value="${p.prix_ht ? (p.prix_ht / 100).toFixed(2).replace('.', ',') : ''}" placeholder="Sur devis" aria-label="Prix HT de ${h(p.nom)}"></td>
+            <td><label class="checkline"><input type="checkbox" name="achat_en_ligne" ${p.achat_en_ligne ? 'checked' : ''}> En vente</label></td><td><button class="btn btn-outline btn-sm" type="button" data-produit-save="${h(p.id)}">Enregistrer</button></td></tr>`).join('')}
+          </tbody></table></div></div>
+        <div class="card panel"><h2>Commandes</h2>${d.commandes.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Commande</th><th>Client</th><th>Contenu</th><th class="num">Total TTC</th><th>Statut</th><th>Facture</th></tr></thead><tbody>
+          ${d.commandes.map((c) => `<tr><td><strong>${h(c.reference)}</strong><br><small class="muted">${h(fmtSql(c.cree_le))}</small></td><td>${h(c.email || '—')}</td><td><small>${c.lignes.map((l) => `${+l.quantite} × ${h(l.nom)}`).join('<br>')}</small></td><td class="num">${euros(c.montant_ttc)}</td>
+            <td><span class="status status-${h(c.statut)}">${h({ payee: 'Payée', en_attente: 'Paiement en cours', expiree: 'Abandonnée', remboursee: 'Remboursée' }[c.statut] || c.statut)}</span></td><td>${h(c.facture || '')}</td></tr>`).join('')}
+          </tbody></table></div>` : empty('Aucune commande pour le moment.')}</div>`;
+    } },
     compte: { title: 'Mon compte', async load() { cache.totp = await api('/api/auth/totp/statut'); }, render() {
       const t = cache.totp || {};
       return `<div class="card panel"><h2>Administrateur</h2><p class="muted">Connecté en tant que <strong>${h(data.moi || '')}</strong>. Par sécurité, la session administrateur dure 12 heures.</p></div>
@@ -432,6 +518,18 @@
         await load(); await render(); toast('Message envoyé à l’équipe');
       } catch (err) { toast(err.message); form.querySelector('button').disabled = false; }
     }
+    if (form.matches('[data-regles]')) {
+      e.preventDefault();
+      const etapes = cache.factures.regles.etapes.map((x, i) => ({ jours: form[`jours${i}`].value, nom: form[`nom${i}`].value, sujet: form[`sujet${i}`].value, message: form[`message${i}`].value }));
+      try { const res = await api('/api/admin/facturation', { regles: { actives: form.actives.checked, etapes } }); toast(res.message); await views.factures.load(); await render(); } catch (err) { toast(err.message); }
+      return;
+    }
+    if (form.matches('[data-facturation]')) {
+      e.preventDefault();
+      const facturation = Object.fromEntries(new FormData(form));
+      try { const res = await api('/api/admin/facturation', { facturation }); toast(res.message); await views.factures.load(); await render(); } catch (err) { toast(err.message); }
+      return;
+    }
     if (form.matches('[data-codes-form]')) {
       e.preventDefault();
       try {
@@ -464,6 +562,25 @@
   });
 
   root.addEventListener('change', async (e) => {
+    const fa = e.target.closest('[data-facture-action]');
+    if (!fa || !fa.value) return;
+    const f = cache.factures.factures.find((x) => x.id === +fa.dataset.factureAction);
+    const action = fa.value; fa.value = '';
+    if (action === 'voir') return window.open(`/facture?t=${encodeURIComponent(f.jeton)}`, '_blank', 'noopener');
+    let mode;
+    if (action === 'payee') {
+      mode = prompt(`Mode de paiement de ${f.numero} (virement, carte, cheque, especes, autre) :`, 'virement');
+      if (!mode) return;
+    }
+    const q = { annuler: `Annuler la facture ${f.numero} ? Elle reste numérotée et visible, mais n’est plus à payer.`, relancer: `Envoyer une relance maintenant à ${f.email} ?`, renvoyer: `Renvoyer la facture ${f.numero} à ${f.email} ?` }[action];
+    if (q && !confirm(q)) return;
+    try {
+      const res = await api('/api/admin/facture/action', { id: f.id, action, mode: mode && mode.trim().toLowerCase() });
+      toast(res.message); await views.factures.load(); await render();
+    } catch (err) { toast(err.message); }
+  });
+
+  root.addEventListener('change', async (e) => {
     const sel = e.target.closest('[data-rdv-statut]');
     if (!sel) return;
     try {
@@ -478,6 +595,17 @@
     if (open) return openProjet(+open.dataset.openProjet);
     if (e.target.closest('[data-new-projet]')) return newProjet({});
     if (e.target.closest('[data-new-client]')) return newClient();
+    if (e.target.closest('[data-new-facture]')) return newFacture();
+    const ps = e.target.closest('[data-produit-save]');
+    if (ps) {
+      const tr = ps.closest('tr');
+      try {
+        const res = await api('/api/admin/produit', { id: ps.dataset.produitSave, prix_ht: tr.querySelector('[name=prix_ht]').value, achat_en_ligne: tr.querySelector('[name=achat_en_ligne]').checked });
+        toast(res.message); await views.boutique.load(); await render();
+      } catch (err) { toast(err.message); }
+      return;
+    }
+
     const ac = e.target.closest('[data-acces]');
     if (ac) {
       const c = cache.clients.clients.find((x) => x.id === +ac.dataset.id);
@@ -550,6 +678,41 @@
       <p class="form-note">Mot de passe provisoire, valable 7 jours. À sa première connexion, le client devra choisir son mot de passe personnel ; le provisoire cessera alors de fonctionner. Il ne sera plus affiché ici.</p>
       <button class="btn btn-primary" type="button" data-modal-close>Fermer</button>`);
     $$('[data-modal-close]', modal).forEach((b) => b.addEventListener('click', closeModal));
+  }
+
+  function newFacture() {
+    const fa = cache.factures.facturation;
+    const ech = new Date(Date.now() + (Number(fa.delai_paiement) || 30) * 864e5).toISOString().slice(0, 10);
+    const ligne = () => '<div class="ligne"><input class="input" name="libelle" placeholder="Désignation" required aria-label="Désignation"><input class="input" name="quantite" type="number" min="1" value="1" aria-label="Quantité"><input class="input" name="prix_unitaire" inputmode="decimal" placeholder="Prix HT €" required aria-label="Prix unitaire HT"><button class="icon-btn" type="button" data-ligne-suppr aria-label="Supprimer la ligne">✕</button></div>';
+    openModal(`<h2 id="modal-title">Nouvelle facture</h2>
+      <form class="form-grid" data-facture-creer>
+        <div class="two"><div><label class="field-label" for="nf-email">Email du client</label><input class="input" id="nf-email" name="email" type="email" required list="nf-clients"></div>
+          <div><label class="field-label" for="nf-nom">Nom ou entreprise</label><input class="input" id="nf-nom" name="nom"></div></div>
+        <datalist id="nf-clients">${(cache.clients?.clients || []).map((c) => `<option value="${h(c.email)}">${h(c.nom || '')}</option>`).join('')}</datalist>
+        <div><label class="field-label" for="nf-objet">Objet</label><input class="input" id="nf-objet" name="objet" required placeholder="Ex. : Création du site vitrine, acompte 50 %"></div>
+        <div><span class="field-label">Lignes</span><div class="lignes-facture" data-lignes>${ligne()}</div><button class="link-btn" type="button" data-ligne-ajout>+ Ajouter une ligne</button></div>
+        <div class="two"><div><label class="field-label" for="nf-tva">TVA (%)</label><input class="input" id="nf-tva" name="taux_tva" inputmode="decimal" value="${h(fa.taux_tva)}"></div>
+          <div><label class="field-label" for="nf-ech">Échéance</label><input class="input" id="nf-ech" name="echeance" type="date" value="${ech}" required></div></div>
+        <label class="checkline"><input type="checkbox" name="relances" checked> Relances automatiques si impayée</label>
+        <label class="checkline"><input type="checkbox" name="envoyer" checked> Envoyer la facture au client par email maintenant</label>
+        <p class="form-msg err" data-nf-msg hidden></p>
+        <div><button class="btn btn-primary" type="submit">Créer la facture</button></div>
+      </form>`);
+    const form = $('[data-facture-creer]');
+    form.addEventListener('click', (e) => {
+      if (e.target.closest('[data-ligne-ajout]')) $('[data-lignes]', form).insertAdjacentHTML('beforeend', ligne());
+      const sup = e.target.closest('[data-ligne-suppr]');
+      if (sup && $$('.ligne', form).length > 1) sup.closest('.ligne').remove();
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const lignes = $$('.ligne', form).map((l) => ({ libelle: l.querySelector('[name=libelle]').value, quantite: l.querySelector('[name=quantite]').value, prix_unitaire: l.querySelector('[name=prix_unitaire]').value }));
+      const btn = $('button[type=submit]', form); btn.disabled = true;
+      try {
+        const res = await api('/api/admin/facture/creer', { email: form.email.value, nom: form.nom.value, objet: form.objet.value, lignes, taux_tva: form.taux_tva.value.replace(',', '.'), echeance: form.echeance.value, relances: form.relances.checked, envoyer: form.envoyer.checked });
+        closeModal(); toast(res.message); await views.factures.load(); await render();
+      } catch (err) { say($('[data-nf-msg]', form), false, err.message); btn.disabled = false; }
+    });
   }
 
   function newClient() {

@@ -109,7 +109,10 @@ export async function purger(env) {
   ]);
   // Prospects sans accès premium et sans activité depuis 3 ans : suppression complète
   const inactifs = `SELECT c.id FROM clients c WHERE c.acces_premium = 0 AND c.cree_le < ${trois}
-    AND NOT EXISTS (SELECT 1 FROM projets p WHERE p.client_id = c.id AND p.maj_le >= ${trois})`;
+    AND NOT EXISTS (SELECT 1 FROM projets p WHERE p.client_id = c.id AND p.maj_le >= ${trois})
+    AND NOT EXISTS (SELECT 1 FROM factures f WHERE f.client_id = c.id)
+    AND NOT EXISTS (SELECT 1 FROM commandes o WHERE o.client_id = c.id)`;
+  // Les factures et commandes (pièces comptables, conservées 10 ans) ne sont jamais supprimées ici
   await db.batch([
     db.prepare(`DELETE FROM messages WHERE projet_id IN (SELECT id FROM projets WHERE client_id IN (${inactifs}))`),
     db.prepare(`DELETE FROM projets WHERE client_id IN (${inactifs})`),

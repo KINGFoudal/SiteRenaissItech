@@ -10,6 +10,10 @@
  * Espace client    GET /api/client/moi, POST /api/client/message, POST /api/client/profil
  * Administration   /api/admin/…
  * Assistant IA     POST /api/assistant
+ * Factures         /api/admin/factures…, /api/facture, /api/paiement/facture (voir worker/factures.js)
+ * Boutique         GET /api/boutique/catalogue, POST /api/boutique/commande, GET /api/paiement/statut
+ * Stripe           POST /api/stripe/webhook (STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET : secrets)
+ * Tâches planifiées : nettoyage RGPD chaque nuit, relances des factures impayées chaque matin
  *
  * Liaisons et variables (wrangler.jsonc) :
  *   DB (D1), AI (Workers AI), BREVO_API_KEY (secret), BREVO_LIST_ID, BREVO_DOI_TEMPLATE_ID,
@@ -27,6 +31,10 @@ import {
 import { purger } from './securite.js';
 import * as espaces from './espaces.js';
 import { assistant } from './assistant.js';
+import * as factures from './factures.js';
+import { paiementActif } from './stripe.js';
+
+const CRON_RELANCES = '12 7 * * *'; // 7 h 12 UTC : 9 h 12 l'été, 8 h 12 l'hiver à Paris
 
 const ROUTES = {
   'POST /api/contact': contact,
@@ -34,7 +42,7 @@ const ROUTES = {
   'POST /api/rendez-vous': rendezVous,
   'POST /api/newsletter': inscription,
   'POST /api/newsletter/desinscription': desinscription,
-  'GET /api/config': (request, env) => json({ turnstile: env.TURNSTILE_SITE_KEY || null }),
+  'GET /api/config': (request, env) => json({ turnstile: env.TURNSTILE_SITE_KEY || null, paiement: paiementActif(env) }),
   'POST /api/auth/connexion': connexion,
   'POST /api/auth/2fa': deuxFacteurs,
   'POST /api/auth/totp/initier': totpInitier,
@@ -64,11 +72,25 @@ const ROUTES = {
   'GET /api/admin/assistant': espaces.adminAssistant,
   'GET /api/admin/journal': espaces.adminJournal,
   'POST /api/assistant': assistant,
+  'GET /api/admin/factures': factures.adminFactures,
+  'POST /api/admin/facture/creer': factures.adminFactureCreer,
+  'POST /api/admin/facture/action': factures.adminFactureAction,
+  'POST /api/admin/facturation': factures.adminFacturation,
+  'GET /api/admin/boutique': factures.adminBoutique,
+  'POST /api/admin/produit': factures.adminProduit,
+  'GET /api/facture': factures.factureVoir,
+  'GET /api/paiement/facture': factures.facturePayer,
+  'GET /api/paiement/statut': factures.statutPaiement,
+  'GET /api/boutique/catalogue': factures.catalogue,
+  'POST /api/boutique/commande': factures.commander,
+  'POST /api/stripe/webhook': factures.webhook,
 };
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(purger(env));
+    // Deux déclencheurs (wrangler.jsonc) : la nuit pour le nettoyage, le matin pour les relances de factures
+    if (event.cron === CRON_RELANCES) ctx.waitUntil(factures.relances(env));
+    else ctx.waitUntil(purger(env));
   },
 
   async fetch(request, env, ctx) {

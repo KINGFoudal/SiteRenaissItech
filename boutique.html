@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=66b177955e">
+  <link rel="stylesheet" href="assets/css/style.css?v=7243c98ea4">
 </head>
 <body>
   <header class="site-header">
@@ -63,7 +63,7 @@
       </div>
       <h2 class="sr-only">Nos offres</h2>
       <div class="products">
-        <article class="card product" data-cat="conseil">
+        <article class="card product" data-produit="diagnostic-ia" data-cat="conseil">
           <div class="thumb"><img src="assets/img/o-diagnostic.svg" alt="Diagnostic IA privée" width="400" height="260" loading="lazy"><span class="badge">Populaire</span></div>
           <div class="product-body">
             <h3>Diagnostic IA privée</h3>
@@ -74,7 +74,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="ia">
+        <article class="card product" data-produit="assistant-ia" data-cat="ia">
           <div class="thumb"><img src="assets/img/o-assistant.svg" alt="Assistant IA privé clé en main" width="400" height="260" loading="lazy"><span class="badge">Nouveau</span></div>
           <div class="product-body">
             <h3>Assistant IA privé clé en main</h3>
@@ -85,7 +85,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="ia">
+        <article class="card product" data-produit="poc-ia" data-cat="ia">
           <div class="thumb"><img src="assets/img/o-poc.svg" alt="PoC IA sur vos données" width="400" height="260" loading="lazy"></div>
           <div class="product-body">
             <h3>PoC IA sur vos données</h3>
@@ -96,7 +96,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="ia">
+        <article class="card product" data-produit="pack-automatisation" data-cat="ia">
           <div class="thumb"><img src="assets/img/p-automatisation-ia.svg" alt="Pack Automatisation IA" width="400" height="260" loading="lazy"></div>
           <div class="product-body">
             <h3>Pack Automatisation IA</h3>
@@ -107,7 +107,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="formations">
+        <article class="card product" data-produit="formation-ia" data-cat="formations">
           <div class="thumb"><img src="assets/img/o-formation.svg" alt="Formation IA des équipes" width="400" height="260" loading="lazy"></div>
           <div class="product-body">
             <h3>Formation IA des équipes</h3>
@@ -118,7 +118,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="securite">
+        <article class="card product" data-produit="audit-securite" data-cat="securite">
           <div class="thumb"><img src="assets/img/o-securite.svg" alt="Audit sécurité &amp; IA" width="400" height="260" loading="lazy"></div>
           <div class="product-body">
             <h3>Audit sécurité &amp; IA</h3>
@@ -129,7 +129,7 @@
             </div>
           </div>
         </article>
-        <article class="card product" data-cat="web">
+        <article class="card product" data-produit="site-vitrine" data-cat="web">
           <div class="thumb"><img src="assets/img/p-site-vitrine.svg" alt="Site vitrine professionnel" width="400" height="260" loading="lazy"></div>
           <div class="product-body">
             <h3>Site vitrine professionnel</h3>
@@ -150,6 +150,21 @@
       </div>
     </div>
   </main>
+  <button class="cart-fab" type="button" data-cart-open hidden aria-label="Ouvrir le panier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Panier</span><b data-cart-count>0</b></button>
+  <div class="cart" data-cart hidden>
+    <div class="cart-backdrop" data-cart-close></div>
+    <aside class="cart-panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+      <div class="cart-head"><h2 id="cart-title">Votre panier</h2><button class="icon-btn" type="button" data-cart-close aria-label="Fermer le panier">✕</button></div>
+      <ul class="cart-list" data-cart-list></ul>
+      <div class="cart-foot">
+        <div class="cart-total"><span>Total TTC</span><strong data-cart-total>0 €</strong></div>
+        <p class="form-note" data-cart-tva></p>
+        <button class="btn btn-primary btn-block" type="button" data-cart-pay>Payer</button>
+        <p class="form-note cart-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Paiement sécurisé par Stripe : carte, Apple Pay, Google Pay. Facture envoyée par email.</p>
+        <p class="form-msg err" data-cart-err hidden></p>
+      </div>
+    </aside>
+  </div>
   <footer class="site-footer">
     <div class="container">
       <div class="footer-grid">
@@ -190,6 +205,6 @@
     </div>
   </footer>
   <div class="toast" role="status" aria-live="polite" data-toast></div>
-  <script src="assets/js/main.js?v=96f1490c5f" defer></script>
+  <script src="assets/js/main.js?v=70fc7f106e" defer></script>
 </body>
 </html>

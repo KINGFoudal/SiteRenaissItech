@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>Inscription confirmée | Newsletter Renaissance iTech</title>
-  <meta name="description" content="Votre inscription à la newsletter Renaissance iTech est confirmée.">
-  <link rel="canonical" href="https://www.renaissance-itech.com/newsletter-confirmee">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Votre facture | Renaissance iTech</title>
+  <meta name="description" content="Consultez, téléchargez et réglez votre facture Renaissance iTech.">
+  <link rel="canonical" href="https://www.renaissance-itech.com/facture">
   <meta property="og:site_name" content="Renaissance iTech">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Inscription confirmée | Newsletter Renaissance iTech">
-  <meta property="og:description" content="Votre inscription à la newsletter Renaissance iTech est confirmée.">
-  <meta property="og:url" content="https://www.renaissance-itech.com/newsletter-confirmee">
+  <meta property="og:title" content="Votre facture | Renaissance iTech">
+  <meta property="og:description" content="Consultez, téléchargez et réglez votre facture Renaissance iTech.">
+  <meta property="og:url" content="https://www.renaissance-itech.com/facture">
   <meta property="og:image" content="https://www.renaissance-itech.com/assets/img/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -51,14 +52,13 @@
   </header>
   <main class="page">
     <div class="container">
-      <div class="done-card card">
-        <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg></div>
-        <span class="eyebrow">Newsletter</span>
-        <h1 class="page-title">Votre inscription est confirmée</h1>
-        <p class="done-lead">Merci ! Vous recevrez nos prochains articles sur l’IA privée, l’automatisation et la cybersécurité. Un à deux emails par mois, jamais de publicité.</p>
-
-        <div class="hero-ctas done-ctas"><a class="btn btn-primary" href="/blog">Lire le blog</a><a class="btn btn-outline" href="/">Retour à l’accueil</a></div>
+      <div class="invoice-actions no-print" data-facture-actions hidden>
+        <a class="btn btn-primary" data-facture-payer hidden>Payer par carte</a>
+        <button class="btn btn-outline" type="button" data-print>Télécharger en PDF</button>
       </div>
+      <article class="invoice card" data-facture>
+        <p class="empty-state">Chargement de la facture…</p>
+      </article>
     </div>
   </main>
   <footer class="site-footer">
