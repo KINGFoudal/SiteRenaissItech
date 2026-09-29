@@ -642,7 +642,7 @@
       const taux = f.taux_tva / 100;
       const statut = f.statut === 'payee' ? `<span class="status status-termine">Payée le ${fr(f.payee_le)}</span>` : f.statut === 'annulee' ? '<span class="status status-annule">Annulée</span>' : `<span class="status status-nouveau">À régler avant le ${fr(f.echeance)}</span>`;
       factureEl.innerHTML = `<header class="invoice-head">
-          <div><div class="invoice-logo"><img src="/assets/img/logo-mark.svg" alt="" width="40" height="40"><span class="logo-text">Renaissance<span>iTech</span></span></div><strong class="invoice-brand">${esc(e.raison_sociale)}</strong><p>${esc(e.adresse).replace(/\n/g, '<br>')}</p>${e.siret ? `<p>SIRET ${esc(e.siret)}</p>` : ''}${e.tva_intracom ? `<p>TVA ${esc(e.tva_intracom)}</p>` : ''}</div>
+          <div><div class="invoice-logo"><img src="/assets/img/logo-mark.svg" alt="" width="40" height="40"><span class="logo-text">Renaissance<span>iTech</span></span></div>${/^renaissance\s*itech$/i.test((e.raison_sociale || '').trim()) ? '' : `<strong class="invoice-brand">${esc(e.raison_sociale)}</strong>`}<p>${esc(e.adresse).replace(/\n/g, '<br>')}</p>${e.siret ? `<p>SIRET ${esc(e.siret)}</p>` : ''}${e.tva_intracom ? `<p>TVA ${esc(e.tva_intracom)}</p>` : ''}</div>
           <div class="invoice-meta"><span class="invoice-kicker">Facture</span><h1>${esc(f.numero)}</h1><p>Émise le ${fr(f.emise_le)}</p><p>Échéance : ${fr(f.echeance)}</p>${statut}</div>
         </header>
         <div class="invoice-client"><span>Facturé à</span><strong>${esc(f.entreprise || f.nom || '')}</strong><p>${esc(f.nom && f.entreprise ? f.nom : '')}</p><p>${esc(f.email)}</p></div>
