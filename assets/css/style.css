@@ -979,9 +979,16 @@ body.no-scroll { overflow: hidden; }
 
 /* ---------- Facture consultable et imprimable ---------- */
 .invoice-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; max-width: 880px; margin: 0 auto 16px; }
-.invoice { max-width: 880px; margin: 0 auto; padding: 44px; }
-.invoice-head { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 2px solid var(--black); }
-.invoice-brand { font-size: 20px; }
+.invoice { max-width: 880px; margin: 0 auto; padding: 44px; border-top: 6px solid var(--orange); }
+.invoice-head { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 2px solid var(--orange); }
+.invoice-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.invoice-logo .logo-text { font-size: 18px; }
+.invoice-brand { font-size: 15px; }
+.invoice-kicker { display: block; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange-dark); }
+.invoice .table thead th { background: var(--black); color: #fff; }
+.invoice .table thead th:first-child { border-radius: 6px 0 0 6px; }
+.invoice .table thead th:last-child { border-radius: 0 6px 6px 0; }
+.invoice-client { padding: 14px 16px; border-radius: 8px; background: var(--orange-soft); border-left: 4px solid var(--orange); }
 .invoice-head p, .invoice-client p { margin: 2px 0 0; font-size: 13.5px; color: #444; }
 .invoice-meta { text-align: right; }
 .invoice-meta h1 { font-size: 24px; margin-bottom: 6px; }
@@ -991,7 +998,7 @@ body.no-scroll { overflow: hidden; }
 .invoice-objet { margin: 22px 0 12px; }
 .invoice-totals { margin: 18px 0 0 auto; max-width: 320px; display: grid; gap: 8px; }
 .invoice-totals div { display: flex; justify-content: space-between; }
-.invoice-totals .grand { padding-top: 10px; border-top: 2px solid var(--black); font-size: 18px; }
+.invoice-totals .grand { margin-top: 4px; padding: 12px 14px; border-radius: 8px; background: var(--orange); color: #fff; font-size: 18px; }
 .invoice-note { margin-top: 18px; font-size: 12.5px; color: #555; }
 @media (max-width: 640px) {
   .invoice { padding: 22px 16px; }
@@ -1002,7 +1009,8 @@ body.no-scroll { overflow: hidden; }
 @media print {
   .site-header, .site-footer, .no-print, .assistant, .assistant-fab, .toast { display: none !important; }
   .page { padding: 0; }
-  .invoice { box-shadow: none; border: 0; padding: 0; max-width: none; }
+  .invoice { box-shadow: none; border: 0; border-top: 6px solid var(--orange); padding: 12px 0 0; max-width: none; }
+  .invoice, .invoice * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ---------- Administration : factures et boutique ---------- */
