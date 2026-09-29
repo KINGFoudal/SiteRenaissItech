@@ -16,7 +16,7 @@
 
 import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton, emailTable,
-  sendEmail, notifyEmail, siteUrl, upsertClient, randomToken, validDate, parisNow, requireDb,
+  sendEmail, envoyerEmail, notifyEmail, siteUrl, upsertClient, randomToken, validDate, parisNow, requireDb,
 } from './lib.js';
 import { requireSession } from './auth.js';
 import { journal } from './securite.js';
@@ -79,9 +79,10 @@ function blocPaiement(env, b, f, fact) {
   return `${boutons}${virement}<p style="font-size:13px"><a href="${esc(lienFacture(b, f))}">Voir et télécharger la facture</a></p>`;
 }
 
+// Renvoie { ok, erreur } : l'administrateur voit la raison d'un échec d'envoi
 async function envoyerFacture(env, b, f, client) {
   const fact = await param(env, 'facturation', FACTURATION_DEFAUT);
-  return sendEmail(env, {
+  return envoyerEmail(env, {
     to: client.email, replyTo: notifyEmail(env),
     subject: `Facture ${f.numero} · ${fact.raison_sociale}`,
     html: emailLayout(`Bonjour${client.nom ? ` ${esc(client.nom)}` : ''}`, `<p>Veuillez trouver votre facture pour : <strong>${esc(f.objet)}</strong>.</p>
@@ -181,10 +182,11 @@ export async function adminFactureCreer(request, env, ctx) {
   const { meta } = await env.DB.prepare(`INSERT INTO factures (numero, client_id, projet_id, objet, lignes, montant_ht, taux_tva, montant_ttc, emise_le, echeance, jeton, relances_actives)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(numero, client.id, int(data.projet_id) || null, objet, JSON.stringify(lignes), ht, taux, ttc, emise, echeance, jeton, data.relances === false ? 0 : 1).run();
   const f = { id: meta.last_row_id, numero, objet, montant_ttc: ttc, echeance, jeton };
-  let email_envoye = false;
-  if (data.envoyer !== false) email_envoye = await envoyerFacture(env, siteUrl(env, request), f, client);
+  const envoi = data.envoyer !== false ? await envoyerFacture(env, siteUrl(env, request), f, client) : null;
+  const email_envoye = Boolean(envoi?.ok);
   await journal(env, request, s.email, 'Facture créée', numero, `${euros(ttc)} · ${email}`);
-  return json({ ok: true, facture: f, email_envoye, message: `Facture ${numero} créée${email_envoye ? ' et envoyée au client' : ''}.` });
+  const suite = !envoi ? '' : envoi.ok ? ' et envoyée au client' : `, mais l’email n’est pas parti (${envoi.erreur})`;
+  return json({ ok: true, facture: f, email_envoye, message: `Facture ${numero} créée${suite}.` });
 }
 
 export async function adminFactureAction(request, env, ctx) {
@@ -221,8 +223,8 @@ export async function adminFactureAction(request, env, ctx) {
     return json({ ok, message: ok ? `Relance envoyée à ${f.email}.` : 'L’email n’a pas pu partir. Vérifiez la configuration Brevo.' });
   }
   if (act === 'renvoyer') {
-    const ok = await envoyerFacture(env, b, f, { email: f.email, nom: f.nom });
-    return json({ ok, message: ok ? `Facture renvoyée à ${f.email}.` : 'L’email n’a pas pu partir.' });
+    const { ok, erreur } = await envoyerFacture(env, b, f, { email: f.email, nom: f.nom });
+    return json({ ok, message: ok ? `Facture renvoyée à ${f.email}.` : `L’email n’a pas pu partir : ${erreur}.` });
   }
   throw new HttpError(400, 'Action inconnue.');
 }

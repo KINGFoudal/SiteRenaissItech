@@ -128,8 +128,13 @@ export function htmlVersTexte(html) {
 }
 
 // N'échoue jamais : les données sont déjà enregistrées en base
-export async function sendEmail(env, { to, subject, html, replyTo, attachment }) {
-  if (!env.BREVO_API_KEY) return false;
+export async function sendEmail(env, message) {
+  return (await envoyerEmail(env, message)).ok;
+}
+
+// Variante qui explique l'échec (affichée à l'administrateur, jamais au visiteur)
+export async function envoyerEmail(env, { to, subject, html, replyTo, attachment }) {
+  if (!env.BREVO_API_KEY) return { ok: false, erreur: 'clé BREVO_API_KEY absente de la configuration' };
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -144,11 +149,15 @@ export async function sendEmail(env, { to, subject, html, replyTo, attachment })
         ...(attachment ? { attachment: [attachment] } : {}),
       }),
     });
-    if (!res.ok) console.error('Brevo email', res.status, await res.text());
-    return res.ok;
+    if (res.ok) return { ok: true };
+    const texte = await res.text();
+    console.error('Brevo email', res.status, texte);
+    let detail = texte;
+    try { detail = JSON.parse(texte).message || texte; } catch { /* réponse non JSON */ }
+    return { ok: false, erreur: `Brevo ${res.status} : ${String(detail).slice(0, 200)}` };
   } catch (e) {
     console.error('Brevo email', e);
-    return false;
+    return { ok: false, erreur: 'Brevo injoignable' };
   }
 }
 
