@@ -3,3 +3,4 @@ node_modules/
 audit/
 .dev.vars
 wrangler.test.jsonc
+.wrangler-test-*.jsonc

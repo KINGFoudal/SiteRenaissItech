@@ -20,3 +20,5 @@ wrangler.preview-migrations.jsonc
 .dev.vars
 wrangler.test.jsonc
 PAIEMENTS.md
+tests
+.wrangler-test-*.jsonc
