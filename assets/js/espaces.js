@@ -37,6 +37,11 @@
   const statutFacture = (f, today = new Date().toISOString().slice(0, 10)) => (f.statut === 'payee' ? '<span class="status status-payee">Payée</span>'
     : f.statut === 'annulee' ? '<span class="status status-annulee">Annulée</span>'
       : f.echeance < today ? '<span class="status status-retard">En retard</span>' : '<span class="status status-a_payer">À payer</span>');
+  const DEVIS_LIB = { envoye: 'En attente', accepte: 'Accepté', refuse: 'Refusé', expire: 'Expiré', annule: 'Annulé', facture: 'Facturé' };
+  const statutDevis = (d) => {
+    const st = d.statut === 'envoye' && d.valide_jusqu < new Date().toISOString().slice(0, 10) ? 'expire' : d.statut;
+    return `<span class="status status-d-${h(st)}">${h(DEVIS_LIB[st] || st)}</span>`;
+  };
   const empty = (txt) => `<p class="empty-state">${h(txt)}</p>`;
   const thread = (messages, espace) => (messages.length ? `<div class="thread">${messages.map((m) => {
     const moi = (espace === 'client') === (m.auteur === 'client');
@@ -305,12 +310,17 @@
       if (!withMsg.length) return `<div class="card panel">${empty('Aucun message pour le moment. Vos échanges avec l’équipe apparaîtront ici.')}</div>`;
       return withMsg.map((p) => `<div class="card panel"><h2>${h(p.titre)}</h2>${thread(p.messages, 'client')}<form class="reply-form" data-reply="${p.id}"><label class="sr-only" for="m-${p.id}">Votre message</label><textarea class="textarea" id="m-${p.id}" name="contenu" rows="2" placeholder="Répondre…" required></textarea><button class="btn btn-primary btn-sm" type="submit">Envoyer</button></form></div>`).join('');
     } },
-    factures: { title: 'Mes factures', render() {
+    factures: { title: 'Devis et factures', render() {
       const rows = data.factures || [];
-      if (!rows.length) return `<div class="card panel">${empty('Aucune facture pour le moment.')}</div>`;
+      const devis = data.devis || [];
+      const tableDevis = devis.length ? `<div class="card panel"><h2>Mes devis</h2><div class="table-wrap"><table class="table"><thead><tr><th>Devis</th><th>Objet</th><th class="num">Montant HT</th><th>Statut</th><th></th></tr></thead><tbody>
+        ${devis.map((d) => `<tr><td><strong>${h(d.numero)}</strong><br><small class="muted">${h(fmtDay(d.emis_le))}</small></td><td>${h(d.objet)}</td><td class="num">${euros(d.montant_ht)}</td><td>${statutDevis(d)}</td>
+          <td class="actions"><a class="btn ${d.statut === 'envoye' && d.valide_jusqu >= new Date().toISOString().slice(0, 10) ? 'btn-primary' : 'btn-outline'} btn-sm" href="/devis?t=${encodeURIComponent(d.jeton)}" target="_blank" rel="noopener">${d.statut === 'envoye' ? 'Consulter et accepter' : 'Voir'}</a></td></tr>`).join('')}
+        </tbody></table></div></div>` : '';
+      if (!rows.length) return `${tableDevis}<div class="card panel">${empty('Aucune facture pour le moment.')}</div>`;
       const du = rows.filter((f) => f.statut === 'a_payer').reduce((t, f) => t + f.montant_ttc, 0);
       return `${du ? `<div class="card panel"><h2>Reste à régler : ${euros(du)}</h2><p class="form-note">${data.paiement ? 'Réglez en un clic par carte, Apple Pay ou Google Pay. Paiement sécurisé par Stripe.' : 'Règlement par virement : les coordonnées bancaires figurent sur chaque facture.'}</p></div>` : ''}
-        <div class="card panel table-wrap"><table class="table"><thead><tr><th>Facture</th><th>Objet</th><th class="num">Montant</th><th>Échéance</th><th>Statut</th><th></th></tr></thead><tbody>
+        ${tableDevis}<div class="card panel table-wrap"><table class="table"><thead><tr><th>Facture</th><th>Objet</th><th class="num">Montant</th><th>Échéance</th><th>Statut</th><th></th></tr></thead><tbody>
         ${rows.map((f) => `<tr><td><strong>${h(f.numero)}</strong><br><small class="muted">${h(fmtDay(f.emise_le))}</small></td><td>${h(f.objet)}</td><td class="num">${euros(f.montant_ttc)}</td><td>${h(fmtDay(f.echeance))}</td><td>${statutFacture(f)}</td>
           <td class="actions"><a class="btn btn-outline btn-sm" href="/facture?t=${encodeURIComponent(f.jeton)}" target="_blank" rel="noopener">Voir</a>${f.statut === 'a_payer' && data.paiement ? `<a class="btn btn-primary btn-sm" href="/api/paiement/facture?t=${encodeURIComponent(f.jeton)}">Payer</a>` : ''}</td></tr>`).join('')}
         </tbody></table></div>`;
@@ -463,6 +473,8 @@
       ...d.demandes.map((x) => ({ quand: x.cree_le, icone: 'demande', titre: `Demande de contact : ${x.sujet}`, texte: x.message })),
       ...d.factures.map((f) => ({ quand: `${f.emise_le} 00:00:00`, icone: 'facture', titre: `Facture ${f.numero} émise · ${euros(f.montant_ttc)}`, texte: f.objet })),
       ...d.factures.filter((f) => f.payee_le).map((f) => ({ quand: f.payee_le, icone: 'paiement', titre: `Paiement reçu · ${f.numero} · ${euros(f.montant_ttc)}`, texte: f.mode_paiement ? `Réglée par ${f.mode_paiement}` : '' })),
+      ...(d.devis || []).map((v) => ({ quand: `${v.emis_le} 00:00:01`, icone: 'facture', titre: `Devis ${v.numero} envoyé · ${euros(v.montant_ht)} HT`, texte: v.objet })),
+      ...(d.devis || []).filter((v) => v.refuse_le).map((v) => ({ quand: v.refuse_le, icone: 'relance', titre: `Devis ${v.numero} refusé`, texte: v.raison_refus || '' })),
       ...d.commandes.map((c) => ({ quand: c.payee_le || c.cree_le, icone: 'commande', titre: `Achat en boutique ${c.reference} · ${euros(c.montant_ttc)}` })),
       ...d.messages.filter((m) => m.auteur === 'client').map((m) => ({ quand: m.cree_le, icone: 'message', titre: `Message sur « ${m.titre} »`, texte: m.contenu })),
       ...d.opportunites.filter((o) => o.cloture_le).map((o) => ({ quand: o.cloture_le, icone: o.etape === 'gagne' ? 'paiement' : 'relance', titre: `Opportunité ${o.etape === 'gagne' ? 'gagnée' : 'perdue'} : ${o.titre}`, texte: o.raison_perte || '' })),
@@ -563,7 +575,7 @@
           <div class="table-wrap"><table class="table crm-table"><thead><tr><th>Contact</th><th>Statut</th><th>Étiquettes</th><th class="num">CA encaissé</th><th class="num">Opportunités</th><th class="num">Tâches</th><th>Dernier contact</th><th></th></tr></thead><tbody data-crm-rows>${tableContacts(visibles)}</tbody></table></div>
         </div>`;
     } },
-    contact: { title: 'Fiche contact', menu: 'clients', async load() { cache.fiche = await api(`/api/admin/crm/fiche?id=${encodeURIComponent(routeParam)}`); }, render() {
+    contact: { title: 'Fiche contact', menu: 'clients', async load() { [cache.fiche] = await Promise.all([api(`/api/admin/crm/fiche?id=${encodeURIComponent(routeParam)}`), cache.entreprises ? null : adminList('entreprises', '/api/admin/crm/entreprises')]); }, render() {
       const d = cache.fiche; const c = d.client;
       titleEl.textContent = c.nom || c.entreprise || c.email;
       const ca = d.factures.filter((f) => f.statut === 'payee').reduce((t, f) => t + f.montant_ttc, 0);
@@ -573,13 +585,14 @@
       const champ = (name, label, val, type = 'text') => `<div><label class="field-label" for="fc-${name}">${label}</label><input class="input" id="fc-${name}" name="${name}" type="${type}" value="${h(val || '')}"></div>`;
       return `<div class="card panel contact-head">
           <div class="contact-id"><span class="avatar">${h(initials(c.nom || c.entreprise || c.email))}</span>
-            <div><h2>${h(c.nom || c.email)}</h2><p class="muted">${h([c.poste, c.entreprise].filter(Boolean).join(' · ') || 'Entreprise non renseignée')}</p>
+            <div><h2>${h(c.nom || c.email)}</h2><p class="muted">${h(c.poste || '')}${c.poste && c.entreprise ? ' · ' : ''}${d.entreprise ? `<a class="contact-link" href="#entreprise/${d.entreprise.id}">${h(d.entreprise.nom)}</a>` : h(c.entreprise || (c.poste ? '' : 'Entreprise non renseignée'))}</p>
               <p class="contact-tags">${statutContact(c.statut)} ${chips(c.etiquettes)} ${c.source ? `<small class="muted">Source : ${h(SOURCE_CONTACT[c.source] || c.source)}</small>` : ''}</p></div></div>
           <div class="contact-actions">
             <a class="btn btn-outline btn-sm" href="mailto:${h(c.email)}">✉ Écrire</a>
             ${c.telephone ? `<a class="btn btn-outline btn-sm" href="tel:${h(c.telephone.replace(/\s/g, ''))}">✆ Appeler</a>` : ''}
             <button class="btn btn-outline btn-sm" type="button" data-new-tache="${c.id}">+ Tâche</button>
             <button class="btn btn-outline btn-sm" type="button" data-new-deal="${c.id}">+ Opportunité</button>
+            <button class="btn btn-primary btn-sm" type="button" data-new-devis data-client="${c.id}">+ Devis</button>
             <button class="btn btn-outline btn-sm" type="button" data-new-facture data-email="${h(c.email)}" data-nom="${h(c.entreprise || c.nom || '')}">+ Facture</button>
             <button class="btn btn-outline btn-sm" type="button" data-new-projet-contact>+ Projet</button>
             ${c.acces_premium ? `<button class="btn btn-outline btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Nouveau mot de passe</button><button class="btn btn-outline btn-sm" type="button" data-acces="desactiver" data-id="${c.id}">Couper l’espace client</button>` : `<button class="btn btn-primary btn-sm" type="button" data-acces="provisoire" data-id="${c.id}">Ouvrir l’espace client</button>`}
@@ -606,15 +619,18 @@
               ${d.taches.length ? `<ul class="task-list">${[...tachesOuvertes, ...d.taches.filter((t) => t.faite).slice(0, 5)].map((t) => ligneTache(t, false)).join('')}</ul>` : empty('Aucune tâche.')}</div>
             <div class="card panel"><div class="panel-head"><h2>Opportunités</h2><button class="link-btn" type="button" data-new-deal="${c.id}">+ Ajouter</button></div>
               ${d.opportunites.length ? `<div class="deal-list">${d.opportunites.map((o) => carteOpportunite(o, false)).join('')}</div>` : empty('Aucune opportunité.')}</div>
-            <div class="card panel"><h2>Factures et projets</h2><ul class="row-list">
+            ${d.collegues.length ? `<div class="card panel"><h2>Collègues chez ${h(d.entreprise.nom)}</h2><ul class="row-list">${d.collegues.map((x) => `<li><span class="avatar avatar-sm">${h(initials(x.nom || x.email))}</span><div class="grow">${lienContact(x.id, `<strong>${h(x.nom || x.email)}</strong>`)}<small class="muted">${h(x.poste || x.email)}</small></div>${statutContact(x.statut)}</li>`).join('')}</ul></div>` : ''}
+            <div class="card panel"><h2>Devis, factures et projets</h2><ul class="row-list">
+              ${d.devis.map((v) => `<li><div class="grow"><strong>${h(v.numero)} · ${euros(v.montant_ht)} HT</strong><small class="muted">${h(v.objet)}</small></div>${statutDevis(v)}<a class="link-arrow" href="/devis?t=${encodeURIComponent(v.jeton)}" target="_blank" rel="noopener">Voir</a></li>`).join('')}
               ${d.factures.map((f) => `<li><div class="grow"><strong>${h(f.numero)} · ${euros(f.montant_ttc)}</strong><small class="muted">${h(f.objet)}</small></div>${statutFacture(f)}<a class="link-arrow" href="/facture?t=${encodeURIComponent(f.jeton)}" target="_blank" rel="noopener">Voir</a></li>`).join('')}
               ${d.projets.map((pr) => `<li><div class="grow"><strong>${h(pr.titre)}</strong><small class="muted">Projet · ${+pr.avancement} %</small></div>${badge(pr.statut)}<button class="link-btn" type="button" data-open-projet="${pr.id}">Ouvrir</button></li>`).join('')}
-              ${!d.factures.length && !d.projets.length ? `<li><div class="grow muted">Aucune facture ni projet.</div></li>` : ''}
+              ${!d.factures.length && !d.projets.length && !d.devis.length ? `<li><div class="grow muted">Aucun devis, facture ni projet.</div></li>` : ''}
             </ul></div>
             <form class="card panel form-grid" data-contact-form="${c.id}">
               <h2>Informations</h2>
               <div class="two">${champ('nom', 'Nom', c.nom)}${champ('poste', 'Fonction', c.poste)}</div>
-              <div class="two">${champ('entreprise', 'Entreprise', c.entreprise)}${champ('siret', 'SIRET', c.siret)}</div>
+              <div><label class="field-label" for="fc-entreprise">Entreprise</label><input class="input" id="fc-entreprise" name="entreprise" value="${h(c.entreprise || '')}" list="liste-entreprises" autocomplete="off"><small class="form-note">Choisissez une entreprise existante ou tapez un nouveau nom : la fiche entreprise est créée automatiquement.</small></div>
+              <datalist id="liste-entreprises">${(cache.entreprises?.entreprises || []).map((x) => `<option value="${h(x.nom)}">`).join('')}</datalist>
               <div><label class="field-label" for="fc-email">Email</label><input class="input" id="fc-email" value="${h(c.email)}" disabled></div>
               <div class="two">${champ('telephone', 'Téléphone', c.telephone, 'tel')}${champ('site_web', 'Site web', c.site_web)}</div>
               ${champ('adresse', 'Adresse', c.adresse)}
@@ -668,6 +684,88 @@
           <button class="btn btn-primary" type="submit">Ajouter</button>
         </form>
         ${groupes.map(([titre, list], i) => (list.length || i < 2 ? `<div class="card panel"><h2>${titre} <span class="count-pill${i === 0 && list.length ? ' late' : ''}">${list.length}</span></h2>${list.length ? `<ul class="task-list">${list.map((x) => ligneTache(x)).join('')}</ul>` : empty(i === 0 ? 'Aucun retard 👍' : 'Rien de prévu aujourd’hui.')}</div>` : '')).join('')}`;
+    } },
+    entreprises: { title: 'Entreprises', async load() { await adminList('entreprises', '/api/admin/crm/entreprises'); }, render() {
+      const rows = cache.entreprises.entreprises;
+      const q = (crmFiltre.qe || '').toLowerCase();
+      const visibles = rows.filter((e) => !q || [e.nom, e.ville, e.secteur, e.siret, e.etiquettes].some((v) => (v || '').toLowerCase().includes(q)));
+      return `<div class="card panel"><div class="panel-head"><h2>Entreprises <small class="muted">${visibles.length} / ${rows.length}</small></h2><button class="btn btn-primary btn-sm" type="button" data-new-entreprise>+ Nouvelle entreprise</button></div>
+          <div class="crm-filters crm-filters-1"><input class="input" type="search" placeholder="Rechercher une entreprise, une ville, un secteur…" value="${h(crmFiltre.qe || '')}" data-ent-q aria-label="Rechercher une entreprise"></div>
+          ${visibles.length ? `<div class="table-wrap"><table class="table crm-table"><thead><tr><th>Entreprise</th><th>Statut</th><th class="num">Contacts</th><th class="num">CA encaissé</th><th class="num">Affaires en cours</th><th>Dernier contact</th><th></th></tr></thead><tbody>
+            ${visibles.map((e) => `<tr><td><a class="contact-link" href="#entreprise/${e.id}"><strong>${h(e.nom)}</strong></a><br><small class="muted">${h([e.secteur, e.ville, e.taille ? `${e.taille} salariés` : ''].filter(Boolean).join(' · '))}</small></td>
+              <td>${statutContact(e.statut || 'prospect')}</td><td class="num">${+e.nb_contacts}</td><td class="num">${e.ca ? euros(e.ca) : '<span class="muted">—</span>'}</td>
+              <td class="num">${e.montant_opportunites ? euros(e.montant_opportunites) : '<span class="muted">—</span>'}</td><td><small>${h(depuis(e.dernier_contact || e.cree_le))}</small></td>
+              <td><a class="btn btn-outline btn-sm" href="#entreprise/${e.id}">Ouvrir</a></td></tr>`).join('')}</tbody></table></div>` : empty('Aucune entreprise. Elles se créent aussi automatiquement quand vous renseignez l’entreprise d’un contact.')}</div>`;
+    } },
+    entreprise: { title: 'Fiche entreprise', menu: 'entreprises', async load() { cache.fent = await api(`/api/admin/crm/entreprise?id=${encodeURIComponent(routeParam)}`); }, render() {
+      const d = cache.fent; const e = d.entreprise;
+      titleEl.textContent = e.nom;
+      const ca = d.factures.filter((f) => f.statut === 'payee').reduce((t, f) => t + f.montant_ttc, 0);
+      const aPayer = d.factures.filter((f) => f.statut === 'a_payer').reduce((t, f) => t + f.montant_ttc, 0);
+      const ouvertes = d.opportunites.filter((o) => !['gagne', 'perdu'].includes(o.etape));
+      const champ = (name, label, val) => `<div><label class="field-label" for="fe-${name}">${label}</label><input class="input" id="fe-${name}" name="${name}" value="${h(val || '')}"></div>`;
+      return `<div class="card panel contact-head">
+          <div class="contact-id"><span class="avatar avatar-square">${h(initials(e.nom))}</span>
+            <div><h2>${h(e.nom)}</h2><p class="muted">${h([e.secteur, e.taille ? `${e.taille} salariés` : '', [e.code_postal, e.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || 'Informations à compléter')}</p>
+              <p class="contact-tags">${chips(e.etiquettes)} ${e.site_web ? `<a href="${h(/^https?:/.test(e.site_web) ? e.site_web : `https://${e.site_web}`)}" target="_blank" rel="noopener noreferrer">${h(e.site_web)}</a>` : ''}</p></div></div>
+          <div class="contact-actions"><button class="btn btn-outline btn-sm" type="button" data-new-contact data-entreprise="${h(e.nom)}">+ Contact</button></div>
+        </div>
+        <div class="kpis">
+          <div class="card kpi"><h3>CA encaissé</h3><strong class="kpi-small">${euros(ca)}</strong><span>Tous contacts confondus</span></div>
+          <div class="card kpi${aPayer ? ' kpi-alert' : ''}"><h3>À payer</h3><strong class="kpi-small">${euros(aPayer)}</strong><span>${d.factures.filter((f) => f.statut === 'a_payer').length} facture(s)</span></div>
+          <div class="card kpi"><h3>Affaires en cours</h3><strong class="kpi-small">${euros(ouvertes.reduce((t, o) => t + o.montant_ht, 0))}</strong><span>${ouvertes.length} opportunité(s) HT</span></div>
+          <div class="card kpi"><h3>Contacts</h3><strong>${d.contacts.length}</strong><span>Interlocuteurs</span></div>
+        </div>
+        <div class="contact-grid">
+          <div class="contact-side">
+            <div class="card panel"><h2>Interlocuteurs</h2>${d.contacts.length ? `<ul class="row-list">${d.contacts.map((c) => `<li><span class="avatar avatar-sm">${h(initials(c.nom || c.email))}</span><div class="grow">${lienContact(c.id, `<strong>${h(c.nom || c.email)}</strong>`)}<small class="muted">${h([c.poste, c.email, c.telephone].filter(Boolean).join(' · '))}</small></div>${statutContact(c.statut)}</li>`).join('')}</ul>` : empty('Aucun contact rattaché.')}</div>
+            <div class="card panel"><h2>Opportunités</h2>${d.opportunites.length ? `<div class="deal-list">${d.opportunites.map((o) => carteOpportunite(o, true)).join('')}</div>` : empty('Aucune opportunité.')}</div>
+            <div class="card panel"><h2>Derniers échanges</h2>${d.notes.length ? `<ol class="timeline">${d.notes.slice(0, 15).map((n) => `<li>${icone('message')}<div class="grow"><div class="tl-head"><strong>${h(NOTE_LIB[n.type] || 'Note')} · ${lienContact(n.client_id, h(n.nom || ''))}</strong><small class="muted">${h(depuis(n.cree_le))}</small></div><p>${h(n.contenu).replace(/\n/g, '<br>')}</p></div></li>`).join('')}</ol>` : empty('Aucune note.')}</div>
+          </div>
+          <div class="contact-side">
+            <div class="card panel"><h2>Devis et factures</h2><ul class="row-list">
+              ${d.devis.map((v) => `<li><div class="grow"><strong>${h(v.numero)} · ${euros(v.montant_ht)} HT</strong><small class="muted">${h(v.objet)} · ${h(v.nom || '')}</small></div>${statutDevis(v)}<a class="link-arrow" href="/devis?t=${encodeURIComponent(v.jeton)}" target="_blank" rel="noopener">Voir</a></li>`).join('')}
+              ${d.factures.map((f) => `<li><div class="grow"><strong>${h(f.numero)} · ${euros(f.montant_ttc)}</strong><small class="muted">${h(f.objet)} · ${h(f.nom || '')}</small></div>${statutFacture(f)}<a class="link-arrow" href="/facture?t=${encodeURIComponent(f.jeton)}" target="_blank" rel="noopener">Voir</a></li>`).join('')}
+              ${!d.devis.length && !d.factures.length ? '<li><div class="grow muted">Aucun document.</div></li>' : ''}</ul></div>
+            <form class="card panel form-grid" data-entreprise-form="${e.id}">
+              <h2>Informations légales</h2>
+              ${champ('nom', 'Raison sociale', e.nom)}
+              <div class="two">${champ('siret', 'SIRET', e.siret)}${champ('tva_intracom', 'N° TVA intracommunautaire', e.tva_intracom)}</div>
+              ${champ('adresse', 'Adresse', e.adresse)}
+              <div class="two">${champ('code_postal', 'Code postal', e.code_postal)}${champ('ville', 'Ville', e.ville)}</div>
+              <div class="two">${champ('pays', 'Pays', e.pays)}${champ('site_web', 'Site web', e.site_web)}</div>
+              <div class="two">${champ('secteur', 'Secteur d’activité', e.secteur)}<div><label class="field-label" for="fe-taille">Effectif</label><select class="select" id="fe-taille" name="taille"><option value="">Inconnu</option>${d.tailles.map((x) => `<option${x === e.taille ? ' selected' : ''}>${x}</option>`).join('')}</select></div></div>
+              ${champ('etiquettes', 'Étiquettes', e.etiquettes)}
+              <p class="form-note">Ces informations apparaissent sur les devis et factures de tous ses contacts.</p>
+              <div><button class="btn btn-primary btn-sm" type="submit">Enregistrer</button></div>
+            </form>
+          </div>
+        </div>`;
+    } },
+    devis: { title: 'Devis', async load() { await Promise.all([adminList('devis', '/api/admin/devis'), assureContacts()]); }, render() {
+      const d = cache.devis; const rows = d.devis; const today = d.aujourdhui; const mois = today.slice(0, 7);
+      const enAttente = rows.filter((x) => x.statut === 'envoye' && x.valide_jusqu >= today);
+      const acceptes = rows.filter((x) => ['accepte', 'facture'].includes(x.statut));
+      const decides = rows.filter((x) => ['accepte', 'facture', 'refuse', 'expire'].includes(x.statut) || (x.statut === 'envoye' && x.valide_jusqu < today));
+      const aFacturer = rows.filter((x) => x.statut === 'accepte');
+      const act = (x) => `<select class="select select-sm" data-devis-action="${x.id}" aria-label="Actions sur ${h(x.numero)}"><option value="">Actions…</option>
+        <option value="voir">Voir le devis</option>
+        ${x.statut === 'envoye' ? '<option value="renvoyer">Renvoyer au client</option><option value="annuler">Annuler</option>' : ''}
+        ${x.statut === 'accepte' ? '<option value="facturer">Facturer (solde)</option>' : ''}
+        <option value="dupliquer">Dupliquer</option></select>`;
+      return `<div class="kpis">
+          <div class="card kpi"><h3>En attente de réponse</h3><strong class="kpi-small">${euros(enAttente.reduce((t, x) => t + x.montant_ht, 0))}</strong><span>${enAttente.length} devis HT</span></div>
+          <div class="card kpi"><h3>Acceptés ce mois</h3><strong class="kpi-small">${euros(acceptes.filter((x) => (x.accepte_le || '').startsWith(mois)).reduce((t, x) => t + x.montant_ht, 0))}</strong><span>${acceptes.filter((x) => (x.accepte_le || '').startsWith(mois)).length} devis HT</span></div>
+          <div class="card kpi"><h3>Taux d’acceptation</h3><strong>${decides.length ? `${Math.round((acceptes.length / decides.length) * 100)} %` : '—'}</strong><span>Sur les devis clos</span></div>
+          <div class="card kpi${aFacturer.length ? ' kpi-alert' : ''}"><h3>À facturer</h3><strong>${aFacturer.length}</strong><span>Devis acceptés sans facture de solde</span></div>
+        </div>
+        <div class="card panel"><div class="panel-head"><h2>Devis</h2><button class="btn btn-primary btn-sm" type="button" data-new-devis>+ Nouveau devis</button></div>
+          <p class="form-note">Le client reçoit un lien pour consulter le devis, l’accepter en un clic (« bon pour accord ») ou le refuser. S’il y a un acompte, sa facture est créée aussitôt et le client est dirigé vers le paiement.</p>
+          ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Devis</th><th>Client</th><th class="num">Montant HT</th><th>Validité</th><th>Statut</th><th></th></tr></thead><tbody>
+            ${rows.map((x) => `<tr><td><strong>${h(x.numero)}</strong><br><small class="muted">${h(x.objet)}</small></td><td>${lienContact(x.client_id, h(x.entreprise || x.nom || x.email))}${x.entreprise && x.nom ? `<br><small class="muted">${h(x.nom)}</small>` : ''}</td>
+              <td class="num">${euros(x.montant_ht)}${x.acompte_pct ? `<br><small class="muted">acompte ${+x.acompte_pct} %</small>` : ''}</td><td><small>${h(fmtDay(x.valide_jusqu))}</small></td>
+              <td>${statutDevis(x)}${x.accepte_par ? `<br><small class="muted">par ${h(x.accepte_par)}</small>` : ''}${x.raison_refus ? `<br><small class="muted">${h(x.raison_refus)}</small>` : ''}</td><td>${act(x)}</td></tr>`).join('')}
+          </tbody></table></div>` : empty('Aucun devis pour le moment.')}</div>`;
     } },
     factures: { title: 'Factures', async load() { await adminList('factures', '/api/admin/factures'); }, render() {
       const d = cache.factures; const rows = d.factures; const today = d.aujourdhui;
@@ -890,7 +988,11 @@
     if (e.target.closest('[data-new-client]')) return newClient();
     const nf = e.target.closest('[data-new-facture]');
     if (nf) return newFacture({ email: nf.dataset.email, nom: nf.dataset.nom });
-    if (e.target.closest('[data-new-contact]')) return newContact();
+    const nct = e.target.closest('[data-new-contact]');
+    if (nct) return newContact({ entreprise: nct.dataset.entreprise });
+    if (e.target.closest('[data-new-entreprise]')) return newEntreprise();
+    const ndv = e.target.closest('[data-new-devis]');
+    if (ndv) return newDevis({ client_id: ndv.dataset.client });
     const nt = e.target.closest('[data-new-tache]');
     if (nt) return newTache({ client_id: nt.dataset.newTache });
     const nd = e.target.closest('[data-new-deal]');
@@ -968,6 +1070,12 @@
   };
   root.addEventListener('input', (e) => {
     if (e.target.matches('[data-crm-q]')) { crmFiltre.q = e.target.value.trim(); rafraichirContacts(); }
+    if (e.target.matches('[data-ent-q]')) {
+      crmFiltre.qe = e.target.value;
+      const pos = e.target.selectionStart;
+      root.innerHTML = views.entreprises.render();
+      const champ = $('[data-ent-q]'); champ.focus(); champ.setSelectionRange(pos, pos);
+    }
   });
   root.addEventListener('change', async (e) => {
     const t = e.target;
@@ -975,6 +1083,15 @@
     if (t.matches('[data-crm-tag]')) { crmFiltre.tag = t.value; return rafraichirContacts(); }
     if (t.matches('[data-tache-faite]')) return crmAction('/api/admin/crm/tache', { id: +t.dataset.tacheFaite, faite: t.checked });
     if (t.matches('[data-deal-etape]')) return changerEtape(+t.dataset.dealEtape, t.value, () => render());
+    if (t.matches('[data-devis-action]')) {
+      const x = cache.devis.devis.find((v) => v.id === +t.dataset.devisAction);
+      const action = t.value; t.value = '';
+      if (!action) return;
+      if (action === 'voir') return window.open(`/devis?t=${encodeURIComponent(x.jeton)}`, '_blank', 'noopener');
+      const q = { renvoyer: `Renvoyer le devis ${x.numero} à ${x.email} ?`, annuler: `Annuler le devis ${x.numero} ? Le client ne pourra plus l’accepter.`, facturer: `Créer la facture de solde du devis ${x.numero} et l’envoyer au client ? Les acomptes déjà facturés seront déduits.`, dupliquer: `Créer un nouveau devis à partir de ${x.numero} ? Il ne sera pas envoyé tout de suite.` }[action];
+      if (q && !confirm(q)) return;
+      return crmAction('/api/admin/devis/action', { id: x.id, action });
+    }
   });
   async function changerEtape(id, etape, annuler) {
     let raison;
@@ -993,6 +1110,11 @@
     if (f.matches('[data-contact-form]')) {
       e.preventDefault();
       await crmAction('/api/admin/crm/contact', { id: +f.dataset.contactForm, ...Object.fromEntries(new FormData(f)) });
+    }
+    if (f.matches('[data-entreprise-form]')) {
+      e.preventDefault();
+      const res = await crmAction('/api/admin/crm/entreprise', { id: +f.dataset.entrepriseForm, ...Object.fromEntries(new FormData(f)) }, { recharger: false });
+      if (res) { delete cache.entreprises; await render(); }
     }
     if (f.matches('[data-tache-form]')) {
       e.preventDefault();
@@ -1026,12 +1148,13 @@
     else render();
   });
 
-  function newContact() {
+  async function newContact(pre = {}) {
+    if (!cache.entreprises) { try { await adminList('entreprises', '/api/admin/crm/entreprises'); } catch { /* suggestions facultatives */ } }
     openModal(`<h2 id="modal-title">Nouveau contact</h2>
       <form class="form-grid" data-contact-creer>
         <div class="two"><div><label class="field-label" for="nc-nom">Nom complet</label><input class="input" id="nc-nom" name="nom" required></div>
           <div><label class="field-label" for="nc-email">Email</label><input class="input" id="nc-email" name="email" type="email" required></div></div>
-        <div class="two"><div><label class="field-label" for="nc-ent">Entreprise</label><input class="input" id="nc-ent" name="entreprise"></div>
+        <div class="two"><div><label class="field-label" for="nc-ent">Entreprise</label><input class="input" id="nc-ent" name="entreprise" list="nc-entreprises" autocomplete="off" value="${h(pre.entreprise || '')}"><datalist id="nc-entreprises">${(cache.entreprises?.entreprises || []).map((x) => `<option value="${h(x.nom)}">`).join('')}</datalist></div>
           <div><label class="field-label" for="nc-tel">Téléphone</label><input class="input" id="nc-tel" name="telephone" type="tel"></div></div>
         <div class="two"><div><label class="field-label" for="nc-statut">Statut</label><select class="select" id="nc-statut" name="statut">${Object.entries(STATUT_CONTACT).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
           <div><label class="field-label" for="nc-source">Source</label><select class="select" id="nc-source" name="source"><option value="">Inconnue</option>${Object.entries(SOURCE_CONTACT).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div></div>
@@ -1044,7 +1167,7 @@
       const f = ev.currentTarget;
       try {
         const res = await api('/api/admin/crm/contact', Object.fromEntries(new FormData(f)));
-        closeModal(); toast(res.message); delete cache.clients;
+        closeModal(); toast(res.message); delete cache.clients; delete cache.entreprises;
         location.hash = `#contact/${res.id}`;
       } catch (err) { say($('[data-nc-msg]', f), false, err.message); }
     });
@@ -1093,6 +1216,75 @@
       if (edition) body.id = o.id;
       if (body.etape === 'perdu' && o.etape !== 'perdu') { const r = prompt('Pourquoi cette affaire est-elle perdue ?', ''); if (r === null) return; body.raison_perte = r; }
       try { const res = await api('/api/admin/crm/opportunite', body); closeModal(); toast(res.message); await render(); } catch (err) { say($('[data-nd-msg]', f), false, err.message); }
+    });
+  }
+
+
+  function newEntreprise() {
+    openModal(`<h2 id="modal-title">Nouvelle entreprise</h2>
+      <form class="form-grid" data-ent-creer>
+        <div><label class="field-label" for="ne-nom">Raison sociale</label><input class="input" id="ne-nom" name="nom" required></div>
+        <div class="two"><div><label class="field-label" for="ne-ville">Ville</label><input class="input" id="ne-ville" name="ville"></div>
+          <div><label class="field-label" for="ne-secteur">Secteur d’activité</label><input class="input" id="ne-secteur" name="secteur" placeholder="BTP, santé, commerce…"></div></div>
+        <div><label class="field-label" for="ne-siret">SIRET (facultatif)</label><input class="input" id="ne-siret" name="siret" inputmode="numeric"></div>
+        <p class="form-msg err" data-ne-msg hidden></p>
+        <div><button class="btn btn-primary" type="submit">Créer la fiche</button></div>
+      </form>`);
+    $('[data-ent-creer]').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const f = ev.currentTarget;
+      try {
+        const res = await api('/api/admin/crm/entreprise', Object.fromEntries(new FormData(f)));
+        closeModal(); toast(res.message); delete cache.entreprises;
+        location.hash = `#entreprise/${res.id}`;
+      } catch (err) { say($('[data-ne-msg]', f), false, err.message); }
+    });
+  }
+
+  async function newDevis(pre = {}) {
+    try { await Promise.all([cache.devis ? null : adminList('devis', '/api/admin/devis'), assureContacts()]); } catch (err) { return toast(err.message); }
+    const d = cache.devis;
+    const valide = new Date(Date.now() + d.validite * 864e5).toISOString().slice(0, 10);
+    const opps = (cache.fiche?.client?.id === +pre.client_id ? cache.fiche.opportunites : []).filter((o) => !['gagne', 'perdu'].includes(o.etape));
+    const ligne = () => '<div class="ligne"><input class="input" name="libelle" placeholder="Désignation" required aria-label="Désignation"><input class="input" name="quantite" type="number" min="1" value="1" aria-label="Quantité"><input class="input" name="prix_unitaire" inputmode="decimal" placeholder="Prix HT €" required aria-label="Prix unitaire HT"><button class="icon-btn" type="button" data-ligne-suppr aria-label="Supprimer la ligne">✕</button></div>';
+    openModal(`<h2 id="modal-title">Nouveau devis</h2>
+      <form class="form-grid" data-devis-creer>
+        <div><label class="field-label" for="nd-client">Client</label><select class="select" id="nd-client" name="client_id"><option value="">Nouveau client…</option>${optionsContacts(pre.client_id)}</select></div>
+        <div class="nouveau-client" data-nouveau-client ${pre.client_id ? 'hidden' : ''}>
+          <div class="two"><div><label class="field-label" for="nd-email">Email</label><input class="input" id="nd-email" name="email" type="email"></div>
+            <div><label class="field-label" for="nd-nom">Nom</label><input class="input" id="nd-nom" name="nom"></div></div>
+          <div><label class="field-label" for="nd-ent">Entreprise</label><input class="input" id="nd-ent" name="entreprise"></div>
+        </div>
+        ${opps.length ? `<div><label class="field-label" for="nd-opp">Opportunité liée</label><select class="select" id="nd-opp" name="opportunite_id"><option value="">Nouvelle opportunité</option>${opps.map((o) => `<option value="${o.id}">${h(o.titre)}</option>`).join('')}</select></div>` : ''}
+        <div><label class="field-label" for="nd-objet">Objet</label><input class="input" id="nd-objet" name="objet" required placeholder="Ex. : Assistant IA interne sur vos documents"></div>
+        <div><span class="field-label">Lignes</span><div class="lignes-facture" data-lignes>${ligne()}</div><button class="link-btn" type="button" data-ligne-ajout>+ Ajouter une ligne</button></div>
+        <div class="two"><div><label class="field-label" for="nd-tva">TVA (%)</label><input class="input" id="nd-tva" name="taux_tva" inputmode="decimal" value="${h(d.facturation.taux_tva)}"></div>
+          <div><label class="field-label" for="nd-acompte">Acompte à la commande (%)</label><input class="input" id="nd-acompte" name="acompte_pct" type="number" min="0" max="100" step="5" value="30"></div></div>
+        <div><label class="field-label" for="nd-valide">Valable jusqu’au</label><input class="input" id="nd-valide" name="valide_jusqu" type="date" value="${valide}" required></div>
+        <div><label class="field-label" for="nd-cond">Conditions</label><textarea class="input" id="nd-cond" name="conditions" rows="3">${h(d.conditions)}</textarea></div>
+        <label class="checkline"><input type="checkbox" name="envoyer" checked> Envoyer le devis au client par email maintenant</label>
+        <p class="form-msg err" data-nd-msg hidden></p>
+        <div><button class="btn btn-primary" type="submit">Créer le devis</button></div>
+      </form>`);
+    const form = $('[data-devis-creer]');
+    form.client_id.addEventListener('change', () => { $('[data-nouveau-client]', form).hidden = Boolean(form.client_id.value); });
+    form.addEventListener('click', (e) => {
+      if (e.target.closest('[data-ligne-ajout]')) $('[data-lignes]', form).insertAdjacentHTML('beforeend', ligne());
+      const sup = e.target.closest('[data-ligne-suppr]');
+      if (sup && $$('.ligne', form).length > 1) sup.closest('.ligne').remove();
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const lignes = $$('.ligne', form).map((l) => ({ libelle: l.querySelector('[name=libelle]').value, quantite: l.querySelector('[name=quantite]').value, prix_unitaire: l.querySelector('[name=prix_unitaire]').value }));
+      const btn = $('button[type=submit]', form); btn.disabled = true;
+      try {
+        const res = await api('/api/admin/devis/creer', {
+          client_id: form.client_id.value, email: form.email.value, nom: form.nom.value, entreprise: form.entreprise.value,
+          opportunite_id: form.opportunite_id?.value, objet: form.objet.value, lignes, taux_tva: form.taux_tva.value.replace(',', '.'),
+          acompte_pct: form.acompte_pct.value, valide_jusqu: form.valide_jusqu.value, conditions: form.conditions.value, envoyer: form.envoyer.checked,
+        });
+        closeModal(); toast(res.message); delete cache.devis; delete cache.clients; await load().catch(() => {}); await render();
+      } catch (err) { say($('[data-nd-msg]', form), false, err.message); btn.disabled = false; }
     });
   }
 

@@ -4,7 +4,8 @@ import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton, emailTable,
   sendEmail, notifyEmail, siteUrl, upsertClient,
 } from './lib.js';
-import { resumeCrm } from './crm.js';
+import { resumeCrm, lierEntreprise } from './crm.js';
+import { devisClient } from './devis.js';
 import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
 import { journal } from './securite.js';
@@ -37,7 +38,8 @@ export async function clientMoi(request, env) {
   await env.DB.prepare("UPDATE messages SET lu = 1 WHERE auteur = 'equipe' AND projet_id IN (SELECT id FROM projets WHERE client_id = ?)").bind(client.id).run();
 
   const factures = await facturesClient(env, client.id);
-  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0, factures, paiement: paiementActif(env) });
+  const devis = await devisClient(env, client.id);
+  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0, factures, devis, paiement: paiementActif(env) });
 }
 
 export async function clientMessage(request, env, ctx) {
@@ -63,8 +65,10 @@ export async function clientMessage(request, env, ctx) {
 export async function clientProfil(request, env) {
   const s = await requireSession(request, env, 'client');
   const data = await readJson(request);
-  await env.DB.prepare('UPDATE clients SET nom = ?, telephone = ?, entreprise = ? WHERE email = ?')
-    .bind(clean(data.nom, 100) || null, clean(data.telephone, 30) || null, clean(data.entreprise, 120) || null, s.email).run();
+  await env.DB.prepare('UPDATE clients SET nom = ?, telephone = ? WHERE email = ?')
+    .bind(clean(data.nom, 100) || null, clean(data.telephone, 30) || null, s.email).run();
+  const moi = await env.DB.prepare('SELECT id FROM clients WHERE email = ?').bind(s.email).first();
+  if (moi) await lierEntreprise(env, moi.id, data.entreprise);
   return json({ ok: true, message: 'Vos informations sont enregistrées.' });
 }
 
@@ -281,7 +285,8 @@ export async function adminClientCreer(request, env, ctx) {
   const existant = await env.DB.prepare('SELECT acces_premium FROM clients WHERE email = ?').bind(email).first();
   if (existant?.acces_premium) throw new HttpError(409, 'Ce client a déjà un accès. Utilisez « Nouveau mot de passe provisoire » dans la liste.');
   await upsertClient(env, { email, nom: clean(data.nom, 100), telephone: clean(data.telephone, 30) });
-  if (clean(data.entreprise, 120)) await env.DB.prepare('UPDATE clients SET entreprise = COALESCE(entreprise, ?) WHERE email = ?').bind(clean(data.entreprise, 120), email).run();
+  const fiche = await env.DB.prepare('SELECT id, entreprise_id FROM clients WHERE email = ?').bind(email).first();
+  if (clean(data.entreprise, 120) && !fiche.entreprise_id) await lierEntreprise(env, fiche.id, data.entreprise);
   const provisoire = await donnerAcces(env, email);
   const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email, nom: clean(data.nom, 100), provisoire, nouveau: true });
   await journal(env, request, session.email, 'Accès premium créé', email, envoye ? 'identifiants envoyés par email' : 'identifiants non envoyés');

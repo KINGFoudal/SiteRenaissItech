@@ -9,6 +9,9 @@
 //   GET  /api/admin/crm/taches     tâches à faire et récemment faites
 //   POST /api/admin/crm/tache      créer, cocher, supprimer une tâche
 //   GET  /api/admin/crm/export     export CSV des contacts (Excel)
+//   GET  /api/admin/crm/entreprises  liste des entreprises
+//   GET  /api/admin/crm/entreprise   fiche entreprise (?id=)
+//   POST /api/admin/crm/entreprise   créer ou modifier une entreprise
 
 import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton,
@@ -27,6 +30,19 @@ export const ETAPES = { nouveau: 10, qualifie: 25, proposition: 50, negociation:
 const TYPES_NOTE = ['note', 'appel', 'email', 'reunion'];
 
 const etiquettes = (v) => [...new Set(String(v || '').split(',').map((t) => clean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12).join(',');
+// Rattache un contact à la fiche entreprise du même nom (créée si besoin) ; nom vide = aucun rattachement
+export async function lierEntreprise(env, clientId, nom) {
+  const n = clean(nom, 120);
+  if (!n) {
+    await env.DB.prepare('UPDATE clients SET entreprise_id = NULL, entreprise = NULL WHERE id = ?').bind(clientId).run();
+    return null;
+  }
+  await env.DB.prepare('INSERT OR IGNORE INTO entreprises (nom) VALUES (?)').bind(n).run();
+  const e = await env.DB.prepare('SELECT id, nom FROM entreprises WHERE nom = ? COLLATE NOCASE').bind(n).first();
+  await env.DB.prepare('UPDATE clients SET entreprise_id = ?, entreprise = ? WHERE id = ?').bind(e.id, e.nom, clientId).run();
+  return e.id;
+}
+
 const toucher = (env, clientId) => env.DB.prepare("UPDATE clients SET dernier_contact = datetime('now') WHERE id = ?").bind(clientId).run();
 
 /* ---------------------------------------------------------------- automatismes (appelés par le site) */
@@ -66,7 +82,7 @@ export async function crmEvenement(env, type, d) {
 
 export async function adminContacts(request, env) {
   await requireSession(request, env, 'admin');
-  const { results } = await env.DB.prepare(`SELECT c.id, c.email, c.nom, c.telephone, c.entreprise, c.poste, c.ville, c.pays, c.statut, c.source, c.etiquettes,
+  const { results } = await env.DB.prepare(`SELECT c.id, c.email, c.nom, c.telephone, c.entreprise, c.entreprise_id, c.poste, c.ville, c.pays, c.statut, c.source, c.etiquettes,
       c.cree_le, c.derniere_connexion, c.dernier_contact, c.acces_premium, c.doit_changer_mdp, c.acces_cree_le, c.mdp_maj_le,
       (SELECT COUNT(*) FROM projets p WHERE p.client_id = c.id) AS nb_projets,
       (SELECT COUNT(*) FROM rendez_vous r WHERE r.email = c.email) AS nb_rdv,
@@ -86,7 +102,7 @@ export async function adminFiche(request, env) {
   if (!client) throw new HttpError(404, 'Contact introuvable.');
   delete client.mot_de_passe;
   const all = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then((r) => r.results);
-  const [opportunites, notes, taches, projets, factures, rdv, demandes, commandes, messages] = await Promise.all([
+  const [opportunites, notes, taches, projets, factures, rdv, demandes, commandes, messages, devis, entreprise] = await Promise.all([
     all('SELECT * FROM opportunites WHERE client_id = ? ORDER BY cloture_le IS NOT NULL, id DESC', id),
     all('SELECT * FROM crm_notes WHERE client_id = ? ORDER BY id DESC LIMIT 200', id),
     all('SELECT * FROM taches WHERE client_id = ? ORDER BY faite, echeance IS NULL, echeance, id DESC LIMIT 100', id),
@@ -96,8 +112,12 @@ export async function adminFiche(request, env) {
     all('SELECT id, sujet, message, traite, cree_le FROM contacts WHERE email = ? ORDER BY id DESC', client.email),
     all("SELECT id, reference, montant_ttc, statut, cree_le, payee_le FROM commandes WHERE client_id = ? AND statut = 'payee' ORDER BY id DESC", id),
     all("SELECT m.id, m.auteur, m.contenu, m.cree_le, p.titre FROM messages m JOIN projets p ON p.id = m.projet_id WHERE p.client_id = ? ORDER BY m.id DESC LIMIT 30", id),
+    all('SELECT id, numero, objet, montant_ht, montant_ttc, statut, emis_le, valide_jusqu, accepte_le, accepte_par, refuse_le, raison_refus, jeton FROM devis WHERE client_id = ? ORDER BY id DESC', id),
+    client.entreprise_id ? env.DB.prepare('SELECT * FROM entreprises WHERE id = ?').bind(client.entreprise_id).first() : null,
   ]);
-  return json({ client, opportunites, notes, taches, projets, factures, rdv, demandes, commandes, messages, statuts: STATUTS, sources: SOURCES, etapes: ETAPES });
+  const collegues = client.entreprise_id
+    ? await all('SELECT id, nom, email, poste, statut FROM clients WHERE entreprise_id = ? AND id <> ? ORDER BY nom', client.entreprise_id, id) : [];
+  return json({ client, entreprise, collegues, opportunites, notes, taches, projets, factures, devis, rdv, demandes, commandes, messages, statuts: STATUTS, sources: SOURCES, etapes: ETAPES });
 }
 
 export async function adminContactSave(request, env) {
@@ -120,9 +140,10 @@ export async function adminContactSave(request, env) {
   } else if (!await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(id).first()) {
     throw new HttpError(404, 'Contact introuvable.');
   }
-  const cols = Object.keys(champs);
+  const cols = Object.keys(champs).filter((c) => c !== 'entreprise');
   await env.DB.prepare(`UPDATE clients SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`)
     .bind(...cols.map((c) => champs[c] || null), id).run();
+  if (d.entreprise !== undefined) await lierEntreprise(env, id, champs.entreprise);
   return json({ ok: true, id, message: int(d.id) ? 'Fiche enregistrée.' : 'Contact créé.' });
 }
 
@@ -297,4 +318,64 @@ export async function rappelTaches(env) {
   } catch (e) {
     console.error('Rappel des tâches', e);
   }
+}
+
+/* ---------------------------------------------------------------- entreprises */
+
+const TAILLES = ['1-9', '10-49', '50-249', '250+'];
+
+export async function adminEntreprises(request, env) {
+  await requireSession(request, env, 'admin');
+  const { results } = await env.DB.prepare(`SELECT e.*,
+      (SELECT COUNT(*) FROM clients c WHERE c.entreprise_id = e.id) AS nb_contacts,
+      (SELECT COALESCE(SUM(f.montant_ttc), 0) FROM factures f JOIN clients c ON c.id = f.client_id WHERE c.entreprise_id = e.id AND f.statut = 'payee') AS ca,
+      (SELECT COALESCE(SUM(o.montant_ht), 0) FROM opportunites o JOIN clients c ON c.id = o.client_id WHERE c.entreprise_id = e.id AND o.etape NOT IN ('gagne', 'perdu')) AS montant_opportunites,
+      (SELECT MAX(COALESCE(c.dernier_contact, c.cree_le)) FROM clients c WHERE c.entreprise_id = e.id) AS dernier_contact,
+      (SELECT CASE WHEN SUM(c.statut = 'client') > 0 THEN 'client' ELSE 'prospect' END FROM clients c WHERE c.entreprise_id = e.id) AS statut
+    FROM entreprises e ORDER BY dernier_contact DESC LIMIT 1000`).all();
+  return json({ entreprises: results, tailles: TAILLES });
+}
+
+export async function adminEntreprise(request, env) {
+  await requireSession(request, env, 'admin');
+  const id = int(new URL(request.url).searchParams.get('id'));
+  const entreprise = await env.DB.prepare('SELECT * FROM entreprises WHERE id = ?').bind(id).first();
+  if (!entreprise) throw new HttpError(404, 'Entreprise introuvable.');
+  const all = (sql) => env.DB.prepare(sql).bind(id).all().then((r) => r.results);
+  const [contacts, opportunites, factures, devis, notes] = await Promise.all([
+    all('SELECT id, nom, email, telephone, poste, statut, dernier_contact, acces_premium FROM clients WHERE entreprise_id = ? ORDER BY nom'),
+    all("SELECT o.*, c.nom, c.email FROM opportunites o JOIN clients c ON c.id = o.client_id WHERE c.entreprise_id = ? ORDER BY o.cloture_le IS NOT NULL, o.id DESC"),
+    all('SELECT f.id, f.numero, f.objet, f.montant_ttc, f.statut, f.echeance, f.emise_le, f.payee_le, f.jeton, c.nom FROM factures f JOIN clients c ON c.id = f.client_id WHERE c.entreprise_id = ? ORDER BY f.id DESC'),
+    all('SELECT d.id, d.numero, d.objet, d.montant_ht, d.montant_ttc, d.statut, d.emis_le, d.valide_jusqu, d.jeton, c.nom FROM devis d JOIN clients c ON c.id = d.client_id WHERE c.entreprise_id = ? ORDER BY d.id DESC'),
+    all('SELECT n.*, c.nom, c.id AS client_id FROM crm_notes n JOIN clients c ON c.id = n.client_id WHERE c.entreprise_id = ? ORDER BY n.id DESC LIMIT 50'),
+  ]);
+  return json({ entreprise, contacts, opportunites, factures, devis, notes, tailles: TAILLES });
+}
+
+export async function adminEntrepriseSave(request, env) {
+  const s = await requireSession(request, env, 'admin');
+  const d = await readJson(request);
+  const nom = clean(d.nom, 120);
+  if (!nom) throw new HttpError(400, 'Indiquez le nom de l’entreprise.');
+  const champs = {
+    nom, siret: clean(d.siret, 20).replace(/\s/g, ''), tva_intracom: clean(d.tva_intracom, 20).replace(/\s/g, '').toUpperCase(),
+    adresse: clean(d.adresse, 300), code_postal: clean(d.code_postal, 12), ville: clean(d.ville, 80), pays: clean(d.pays, 60),
+    site_web: clean(d.site_web, 200), secteur: clean(d.secteur, 80), taille: TAILLES.includes(d.taille) ? d.taille : '', etiquettes: etiquettes(d.etiquettes),
+  };
+  if (champs.siret && !/^\d{9}(\d{5})?$/.test(champs.siret)) throw new HttpError(400, 'SIRET invalide : 14 chiffres (ou SIREN : 9 chiffres).');
+  const homonyme = await env.DB.prepare('SELECT id FROM entreprises WHERE nom = ? COLLATE NOCASE').bind(nom).first();
+  let id = int(d.id);
+  if (homonyme && homonyme.id !== id) throw new HttpError(409, 'Une entreprise porte déjà ce nom.');
+  const cols = Object.keys(champs);
+  if (id) {
+    await env.DB.prepare(`UPDATE entreprises SET ${cols.map((c) => `${c} = ?`).join(', ')}, maj_le = datetime('now') WHERE id = ?`).bind(...cols.map((c) => champs[c] || null), id).run();
+    await env.DB.prepare('UPDATE clients SET entreprise = ? WHERE entreprise_id = ?').bind(nom, id).run();
+  } else {
+    const { meta } = await env.DB.prepare(`INSERT INTO entreprises (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).bind(...cols.map((c) => champs[c] || null)).run();
+    id = meta.last_row_id;
+    await journal(env, request, s.email, 'Entreprise créée', nom);
+  }
+  // Rattacher un contact existant à cette entreprise
+  if (int(d.contact_id)) await lierEntreprise(env, int(d.contact_id), nom);
+  return json({ ok: true, id, message: int(d.id) ? 'Entreprise enregistrée.' : 'Entreprise créée.' });
 }

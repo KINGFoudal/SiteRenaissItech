@@ -24,7 +24,7 @@ import { journal } from './securite.js';
 import { paiementActif, creerSessionPaiement, lireSession, verifierWebhook } from './stripe.js';
 
 const int = (v) => Number.parseInt(v, 10);
-const euros = (c) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+export const euros = (c) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 const MODES = ['carte', 'virement', 'cheque', 'especes', 'autre'];
 
 /* ---------------------------------------------------------------- réglages */
@@ -42,13 +42,13 @@ const REGLES_DEFAUT = {
 };
 
 // Mentions obligatoires d'une facture française : à compléter dans l'administration
-const FACTURATION_DEFAUT = {
+export const FACTURATION_DEFAUT = {
   raison_sociale: 'Renaissance iTech', adresse: '', siret: '', tva_intracom: '',
   taux_tva: 0, mention_tva: '', delai_paiement: 30, iban: '', bic: '',
   conditions: 'En cas de retard de paiement : pénalités au taux de 3 fois le taux d’intérêt légal et, pour les professionnels, indemnité forfaitaire de 40 € pour frais de recouvrement (art. L441-10 du Code de commerce). Pas d’escompte pour paiement anticipé.',
 };
 
-async function param(env, cle, defaut) {
+export async function param(env, cle, defaut) {
   const row = await env.DB.prepare('SELECT valeur FROM parametres WHERE cle = ?').bind(cle).first();
   if (!row) return structuredClone(defaut);
   try { return { ...structuredClone(defaut), ...JSON.parse(row.valeur) }; } catch { return structuredClone(defaut); }
@@ -57,22 +57,22 @@ const setParam = (env, cle, valeur) => env.DB.prepare('INSERT INTO parametres (c
   .bind(cle, JSON.stringify(valeur)).run();
 
 // Numérotation continue et sans trou, par année : F-2026-0001, C-2026-0001
-async function prochainNumero(env, prefixe) {
+export async function prochainNumero(env, prefixe) {
   const annee = parisNow().date.slice(0, 4);
   const row = await env.DB.prepare(`INSERT INTO parametres (cle, valeur) VALUES (?, '1')
     ON CONFLICT(cle) DO UPDATE SET valeur = CAST(valeur AS INTEGER) + 1 RETURNING valeur`).bind(`compteur:${prefixe}:${annee}`).first();
   return `${prefixe}-${annee}-${String(row.valeur).padStart(4, '0')}`;
 }
 
-const ajouterJours = (date, n) => { const d = new Date(`${date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+export const ajouterJours = (date, n) => { const d = new Date(`${date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const ecartJours = (a, b) => Math.round((new Date(`${a}T12:00:00Z`) - new Date(`${b}T12:00:00Z`)) / 86400000);
-const dateFr = (s) => new Date(`${s}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-const base = (env, request) => (request ? siteUrl(env, request) : (env.SITE_URL || 'https://www.renaissance-itech.com'));
+export const dateFr = (s) => new Date(`${s}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+export const base = (env, request) => (request ? siteUrl(env, request) : (env.SITE_URL || 'https://www.renaissance-itech.com'));
 
 /* ---------------------------------------------------------------- emails */
 
-const lienFacture = (b, f) => `${b}/facture?t=${encodeURIComponent(f.jeton)}`;
-const lienPaiement = (b, f) => `${b}/api/paiement/facture?t=${encodeURIComponent(f.jeton)}`;
+export const lienFacture = (b, f) => `${b}/facture?t=${encodeURIComponent(f.jeton)}`;
+export const lienPaiement = (b, f) => `${b}/api/paiement/facture?t=${encodeURIComponent(f.jeton)}`;
 
 function blocPaiement(env, b, f, fact) {
   const boutons = paiementActif(env) ? emailButton(lienPaiement(b, f), `Payer ${euros(f.montant_ttc)} par carte`) : '';
@@ -81,7 +81,7 @@ function blocPaiement(env, b, f, fact) {
 }
 
 // Renvoie { ok, erreur } : l'administrateur voit la raison d'un échec d'envoi
-async function envoyerFacture(env, b, f, client) {
+export async function envoyerFacture(env, b, f, client) {
   const fact = await param(env, 'facturation', FACTURATION_DEFAUT);
   return envoyerEmail(env, {
     to: client.email, replyTo: notifyEmail(env),
@@ -156,6 +156,38 @@ export async function adminFactures(request, env) {
   return json({ factures: results, regles, facturation, paiement: paiementActif(env), aujourdhui: parisNow().date });
 }
 
+// Lignes saisies par l'administrateur : libellé, quantité, prix unitaire HT en euros (converti en centimes)
+export function lireLignes(data) {
+  return (Array.isArray(data.lignes) ? data.lignes : []).slice(0, 30).map((l) => ({
+    libelle: clean(l.libelle, 200), quantite: Math.max(1, Math.min(999, int(l.quantite) || 1)),
+    prix_unitaire: Math.round(Number(String(l.prix_unitaire).replace(/\s/g, '').replace(',', '.')) * 100),
+  })).filter((l) => l.libelle && Number.isFinite(l.prix_unitaire) && l.prix_unitaire > 0);
+}
+
+// Taux de TVA en centièmes de % (2000 = 20 %) : celui saisi, sinon celui des réglages
+export async function tauxTva(env, saisi) {
+  const fact = await param(env, 'facturation', FACTURATION_DEFAUT);
+  const taux = saisi === undefined || saisi === '' ? int(Number(fact.taux_tva) * 100) : Math.round(Number(String(saisi).replace(',', '.')) * 100);
+  if (!Number.isFinite(taux) || taux < 0 || taux > 3000) throw new HttpError(400, 'Taux de TVA invalide.');
+  return taux;
+}
+
+export const totaux = (lignes, taux) => {
+  const ht = lignes.reduce((t, l) => t + l.quantite * l.prix_unitaire, 0);
+  return { ht, ttc: ht + Math.round(ht * taux / 10000) };
+};
+
+// Crée une facture numérotée (aussi utilisée par les devis : acompte et solde)
+export async function creerFacture(env, { client, objet, lignes, taux, echeance, relances: relancesActives = true, projetId = null, devisId = null, type = 'facture' }) {
+  const { ht, ttc } = totaux(lignes, taux);
+  const numero = await prochainNumero(env, 'F');
+  const jeton = randomToken(24);
+  const emise = parisNow().date;
+  const { meta } = await env.DB.prepare(`INSERT INTO factures (numero, client_id, projet_id, devis_id, type, objet, lignes, montant_ht, taux_tva, montant_ttc, emise_le, echeance, jeton, relances_actives)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(numero, client.id, projetId, devisId, type, objet, JSON.stringify(lignes), ht, taux, ttc, emise, echeance, jeton, relancesActives ? 1 : 0).run();
+  return { id: meta.last_row_id, numero, objet, montant_ht: ht, montant_ttc: ttc, echeance, jeton };
+}
+
 export async function adminFactureCreer(request, env, ctx) {
   const s = await requireSession(request, env, 'admin');
   const data = await readJson(request);
@@ -163,31 +195,21 @@ export async function adminFactureCreer(request, env, ctx) {
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Email du client invalide.');
   const objet = clean(data.objet, 200);
   if (objet.length < 3) throw new HttpError(400, 'Indiquez l’objet de la facture.');
-  const lignes = (Array.isArray(data.lignes) ? data.lignes : []).slice(0, 30).map((l) => ({
-    libelle: clean(l.libelle, 200), quantite: Math.max(1, Math.min(999, int(l.quantite) || 1)),
-    prix_unitaire: Math.round(Number(String(l.prix_unitaire).replace(',', '.')) * 100),
-  })).filter((l) => l.libelle && Number.isFinite(l.prix_unitaire) && l.prix_unitaire > 0);
+  const lignes = lireLignes(data);
   if (!lignes.length) throw new HttpError(400, 'Ajoutez au moins une ligne avec un prix.');
   const fact = await param(env, 'facturation', FACTURATION_DEFAUT);
-  const taux = data.taux_tva === undefined ? int(fact.taux_tva * 100) : Math.round(Number(data.taux_tva) * 100);
-  if (!Number.isFinite(taux) || taux < 0 || taux > 3000) throw new HttpError(400, 'Taux de TVA invalide.');
-  const ht = lignes.reduce((t, l) => t + l.quantite * l.prix_unitaire, 0);
-  const ttc = ht + Math.round(ht * taux / 10000);
+  const taux = await tauxTva(env, data.taux_tva);
   const emise = parisNow().date;
   const echeance = validDate(data.echeance) ? data.echeance : ajouterJours(emise, int(fact.delai_paiement) || 30);
   if (echeance < emise) throw new HttpError(400, 'L’échéance ne peut pas être antérieure à aujourd’hui.');
 
   const client = await upsertClient(env, { email, nom: clean(data.nom, 100) });
-  const numero = await prochainNumero(env, 'F');
-  const jeton = randomToken(24);
-  const { meta } = await env.DB.prepare(`INSERT INTO factures (numero, client_id, projet_id, objet, lignes, montant_ht, taux_tva, montant_ttc, emise_le, echeance, jeton, relances_actives)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(numero, client.id, int(data.projet_id) || null, objet, JSON.stringify(lignes), ht, taux, ttc, emise, echeance, jeton, data.relances === false ? 0 : 1).run();
-  const f = { id: meta.last_row_id, numero, objet, montant_ttc: ttc, echeance, jeton };
+  const f = await creerFacture(env, { client, objet, lignes, taux, echeance, relances: data.relances !== false, projetId: int(data.projet_id) || null });
   const envoi = data.envoyer !== false ? await envoyerFacture(env, siteUrl(env, request), f, client) : null;
   const email_envoye = Boolean(envoi?.ok);
-  await journal(env, request, s.email, 'Facture créée', numero, `${euros(ttc)} · ${email}`);
+  await journal(env, request, s.email, 'Facture créée', f.numero, `${euros(f.montant_ttc)} · ${email}`);
   const suite = !envoi ? '' : envoi.ok ? ' et envoyée au client' : `, mais l’email n’est pas parti (${envoi.erreur})`;
-  return json({ ok: true, facture: f, email_envoye, message: `Facture ${numero} créée${suite}.` });
+  return json({ ok: true, facture: f, email_envoye, message: `Facture ${f.numero} créée${suite}.` });
 }
 
 export async function adminFactureAction(request, env, ctx) {
@@ -263,7 +285,10 @@ export async function adminFacturation(request, env) {
 async function factureParJeton(env, jeton) {
   const t = clean(jeton, 64);
   if (t.length < 20) return null;
-  return env.DB.prepare('SELECT f.*, c.email, c.nom, c.entreprise FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.jeton = ?').bind(t).first();
+  return env.DB.prepare(`SELECT f.*, c.email, c.nom, c.entreprise,
+      COALESCE(e.adresse, c.adresse) AS client_adresse, e.code_postal AS client_cp, COALESCE(e.ville, c.ville) AS client_ville,
+      COALESCE(e.pays, c.pays) AS client_pays, COALESCE(e.siret, c.siret) AS client_siret, e.tva_intracom AS client_tva
+    FROM factures f JOIN clients c ON c.id = f.client_id LEFT JOIN entreprises e ON e.id = c.entreprise_id WHERE f.jeton = ?`).bind(t).first();
 }
 
 export async function factureVoir(request, env) {
