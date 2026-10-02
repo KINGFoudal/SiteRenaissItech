@@ -1,0 +1,23 @@
+# Renaissance iTech
+
+> Renaissance iTech déploie des assistants IA privés et souverains pour les PME et TPE : modèles open source hébergés chez le client ou dans un cloud européen, connectés à ses documents, sans que les données quittent son périmètre. L'équipe forme aussi les collaborateurs, du PoC à la production. Présente en France (Essonne) et en Guinée (Conakry).
+
+Contact : contact@renaissance-itech.com, +33 7 75 70 08 67, du lundi au vendredi de 9 h à 18 h. Tarifs sur devis.
+
+## Services
+
+- [Services](https://www.renaissance-itech.com/services) : IA privée et souveraine (RAG), automatisation IA, formation des équipes, cybersécurité, conseil et stratégie, création web, SEO.
+- [Formations](https://www.renaissance-itech.com/formations) : 5 programmes intra-entreprise pour décideurs IT, équipes techniques et métiers (IA générative, IA privée et RAG, du PoC à la production, sécurité, RGPD et AI Act, IA au quotidien).
+- [Offres](https://www.renaissance-itech.com/boutique) : diagnostic IA, assistant IA privé clé en main, PoC sur vos données, audit sécurité, site vitrine.
+
+## Entreprise
+
+- [À propos](https://www.renaissance-itech.com/a-propos) : mission, valeurs, équipe, implantations en France et en Guinée.
+- [Prendre rendez-vous](https://www.renaissance-itech.com/rendez-vous) : échange de 30 minutes en visioconférence.
+- [Contact](https://www.renaissance-itech.com/contact)
+
+## Blog
+
+- [Comment l'IA transforme les entreprises en 2026](https://www.renaissance-itech.com/blog/comment-ia-transforme-les-entreprises/)
+- [5 bonnes pratiques pour sécuriser votre site web](https://www.renaissance-itech.com/blog/securiser-son-site-web/)
+- [Automatiser pour innover : le levier de croissance des PME](https://www.renaissance-itech.com/blog/automatiser-pour-innover/)
