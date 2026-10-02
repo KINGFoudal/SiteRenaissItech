@@ -1,0 +1,30 @@
+# Tests automatiques : à chaque pull request et à chaque mise à jour de main.
+# Un vrai Worker tourne en local (base D1 neuve, faux Stripe, aucun email envoyé).
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Vérifier la syntaxe du code
+        run: for f in worker/*.js assets/js/*.js; do node --check "$f"; done
+      - name: Vérifier le blog
+        run: npm run check
+      - name: Tests de l'API (factures, paiement, boutique, CRM, devis)
+        run: npm test

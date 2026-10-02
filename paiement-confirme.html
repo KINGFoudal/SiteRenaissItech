@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>Message envoyé | Renaissance iTech</title>
-  <meta name="description" content="Merci pour votre message : l’équipe Renaissance iTech vous répond sous 24 h ouvrées.">
-  <link rel="canonical" href="https://www.renaissance-itech.com/merci-contact">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Paiement | Renaissance iTech</title>
+  <meta name="description" content="Confirmation de votre paiement à Renaissance iTech.">
+  <link rel="canonical" href="https://www.renaissance-itech.com/paiement-confirme">
   <meta property="og:site_name" content="Renaissance iTech">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Message envoyé | Renaissance iTech">
-  <meta property="og:description" content="Merci pour votre message : l’équipe Renaissance iTech vous répond sous 24 h ouvrées.">
-  <meta property="og:url" content="https://www.renaissance-itech.com/merci-contact">
+  <meta property="og:title" content="Paiement | Renaissance iTech">
+  <meta property="og:description" content="Confirmation de votre paiement à Renaissance iTech.">
+  <meta property="og:url" content="https://www.renaissance-itech.com/paiement-confirme">
   <meta property="og:image" content="https://www.renaissance-itech.com/assets/img/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -51,16 +52,13 @@
   </header>
   <main class="page">
     <div class="container">
-      <div class="done-card card">
+      <div class="done-card card" data-paiement>
         <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-5"/></svg></div>
-        <span class="eyebrow">Message envoyé</span>
-        <h1 class="page-title">Merci, nous avons bien reçu votre message</h1>
-        <p class="done-lead">Un email de confirmation vient de vous être envoyé. Notre équipe vous répond sous 24 h ouvrées, du lundi au vendredi.</p>
-        <ul class="done-next">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span><strong>Besoin d’aller plus vite ?</strong> Réservez directement un échange de 30 minutes en visioconférence.</span></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span><strong>Une réponse personnalisée</strong> : un membre de l’équipe étudie votre demande et revient vers vous par email ou par téléphone.</span></li>
-        </ul>
-        <div class="hero-ctas done-ctas"><a class="btn btn-primary" href="/rendez-vous">Prendre rendez-vous</a><a class="btn btn-outline" href="/services">Découvrir nos services</a><a class="btn btn-outline" href="/">Retour à l’accueil</a></div>
+        <span class="eyebrow" data-paiement-eyebrow>Paiement</span>
+        <h1 class="page-title" data-paiement-titre>Vérification de votre paiement…</h1>
+        <p class="done-lead" data-paiement-texte>Quelques secondes, nous confirmons le paiement auprès de notre prestataire bancaire.</p>
+        <div class="recap" data-paiement-recap hidden></div>
+        <div class="hero-ctas done-ctas"><a class="btn btn-primary" data-paiement-facture hidden>Voir ma facture</a><a class="btn btn-outline" href="/espace-client">Mon espace client</a><a class="btn btn-outline" href="/">Retour à l’accueil</a></div>
       </div>
     </div>
   </main>

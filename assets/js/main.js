@@ -279,7 +279,7 @@
     get(k, d) { try { return JSON.parse(sessionStorage.getItem(k)) ?? d; } catch { return d; } },
     set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
   };
-  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   // Mise en forme légère des réponses : listes, liens vers les pages du site et emails
   const formatAnswer = (t) => {
     const lines = esc(t).split(/\n+/);
@@ -534,57 +534,242 @@
     if (fromHash) { activate(fromHash); requestAnimationFrame(() => fromHash.scrollIntoView({ block: 'start' })); }
   }
 
-  /* ---------- Accueil : démo animée de l'assistant IA privé ---------- */
-  const demo = $('[data-ai-demo]');
-  if (demo && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const SCENES = [
-      { q: 'Quel délai de paiement prévoit notre contrat cadre ?', doc: 'contrat',
-        a: 'D’après le contrat cadre 2025 (article 7.2), le paiement intervient à 45 jours fin de mois à compter de la date de facture.', src: 'Contrat_cadre_2025.pdf · p. 6' },
-      { q: 'Qui valide un achat de plus de 5 000 € ?', doc: 'achats',
-        a: 'La procédure achats (section 3) impose la validation du responsable de service puis de la direction financière, avec trois devis comparatifs.', src: 'Procédure_achats.docx · §3' },
-      { q: 'Combien de jours de télétravail sont autorisés ?', doc: 'rh',
-        a: 'Jusqu’à 2 jours par semaine, après accord du manager et signature de l’avenant au contrat de travail.', src: 'Note_RH_teletravail.pdf · p. 2' },
-    ];
-    const chat = $('[data-ai-chat]', demo);
-    const input = $('.ai-input', demo);
-    const typing = $('[data-ai-typing]', demo);
-    const placeholder = typing.textContent;
-    const fileIcon = $('.ai-src svg', demo)?.outerHTML || '';
-    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    const el = (cls, html) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; return d; };
-    let visible = true;
-    new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(demo);
-    const whenVisible = async () => { while (!visible || document.hidden) await wait(400); };
+  /* ---------- Accueil : vidéo de présentation (muette, en boucle) ---------- */
+  const video = $('.phone-screen video');
+  if (video && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    video.removeAttribute('autoplay');
+    video.pause();
+    video.controls = true;
+  }
 
-    const play = async (s) => {
-      await whenVisible();
-      chat.replaceChildren();
-      input.classList.add('is-typing');
-      typing.textContent = '';
-      for (const ch of s.q) { typing.textContent += ch; await wait(38); }
-      await wait(450);
-      input.classList.remove('is-typing');
-      typing.textContent = placeholder;
-      chat.append(el('ai-msg ai-q', `<span>${s.q}</span>`));
-      const search = el('ai-search', '<i></i> Recherche dans vos documents…');
-      chat.append(search);
-      const li = $(`[data-doc="${s.doc}"]`, demo);
-      await wait(700);
-      li.classList.add('is-reading');
-      await wait(1100);
-      search.remove();
-      const ans = el('ai-msg ai-a', '<span></span>');
-      chat.append(ans);
-      const span = $('span', ans);
-      for (const w of s.a.split(' ')) { span.textContent += (span.textContent ? ' ' : '') + w; await wait(55); }
-      ans.insertAdjacentHTML('beforeend', `<em class="ai-src">${fileIcon} ${s.src}</em>`);
-      li.classList.remove('is-reading');
-      await wait(4200);
+
+  /* ---------- Paiement : outils communs ---------- */
+  const euros = (c) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const stock = {
+    get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* navigation privée */ } },
+  };
+
+  /* ---------- Boutique : achat direct ou panier, paiement Stripe ---------- */
+  const cartEl = $('[data-cart]');
+  if (cartEl) {
+    let catalogue = [];
+    let panier = stock.get('rit-panier', []);
+    const fab = $('[data-cart-open]');
+    const save = () => { stock.set('rit-panier', panier); draw(); };
+    const produit = (id) => catalogue.find((p) => p.id === id);
+
+    const payer = async (lignes, btn) => {
+      const err = $('[data-cart-err]');
+      err.hidden = true;
+      btn.disabled = true; const label = btn.textContent; btn.textContent = 'Redirection vers le paiement…';
+      try {
+        const res = await fetch('/api/boutique/commande', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lignes }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error || 'Le paiement n’a pas pu démarrer.');
+        location.href = data.url;
+      } catch (ex) {
+        btn.disabled = false; btn.textContent = label;
+        if (cartEl.hidden) toast(ex.message); else { err.textContent = ex.message; err.hidden = false; }
+      }
     };
-    (async () => {
-      await wait(1200);
-      for (let n = 0; ; n = (n + 1) % SCENES.length) await play(SCENES[n]);
-    })();
+
+    const draw = () => {
+      panier = panier.filter((l) => produit(l.id));
+      const n = panier.reduce((t, l) => t + l.quantite, 0);
+      fab.hidden = !n;
+      $('[data-cart-count]').textContent = n;
+      const total = panier.reduce((t, l) => t + l.quantite * produit(l.id).prix_ttc, 0);
+      $('[data-cart-total]').textContent = euros(total);
+      $('[data-cart-pay]').textContent = `Payer ${euros(total)}`;
+      $('[data-cart-pay]').disabled = !n;
+      $('[data-cart-list]').innerHTML = n ? panier.map((l) => {
+        const p = produit(l.id);
+        return `<li><div><strong>${esc(p.nom)}</strong><small>${euros(p.prix_ttc)} TTC</small></div>
+          <div class="qty"><button type="button" data-qty="${esc(l.id)}" data-d="-1" aria-label="Retirer un">−</button><span>${l.quantite}</span><button type="button" data-qty="${esc(l.id)}" data-d="1" aria-label="Ajouter un">+</button></div></li>`;
+      }).join('') : '<li class="empty-state">Votre panier est vide.</li>';
+    };
+    const ouvrir = (on) => { cartEl.hidden = !on; document.body.classList.toggle('no-scroll', on); if (on) $('[data-cart-pay]').focus(); };
+
+    fetch('/api/boutique/catalogue').then((r) => r.json()).then((c) => {
+      catalogue = c.produits || [];
+      $('[data-cart-tva]').textContent = c.taux_tva ? `Dont TVA ${String(c.taux_tva).replace('.', ',')} %` : (c.mention_tva || '');
+      catalogue.forEach((p) => {
+        const card = $(`[data-produit="${CSS.escape(p.id)}"]`);
+        if (!card) return;
+        const ctas = $('.product-ctas', card);
+        ctas.insertAdjacentHTML('beforebegin', `<p class="price"><strong>${euros(p.prix_ttc)}</strong> <small>TTC</small></p>`);
+        ctas.innerHTML = `<button class="btn btn-primary btn-sm" type="button" data-buy="${esc(p.id)}">Acheter</button>
+          <button class="btn btn-outline btn-sm" type="button" data-add="${esc(p.id)}">Ajouter au panier</button>
+          <a class="link-arrow" href="/contact?produit=${encodeURIComponent(p.nom)}">Une question avant d’acheter ?</a>`;
+      });
+      draw();
+    }).catch(() => {});
+
+    document.addEventListener('click', (e) => {
+      const buy = e.target.closest('[data-buy]');
+      if (buy) return payer([{ id: buy.dataset.buy, quantite: 1 }], buy); // achat direct : 1 clic ici, 1 clic sur Stripe
+      const add = e.target.closest('[data-add]');
+      if (add) {
+        const l = panier.find((x) => x.id === add.dataset.add);
+        if (l) l.quantite = Math.min(10, l.quantite + 1); else panier.push({ id: add.dataset.add, quantite: 1 });
+        save(); toast('Ajouté au panier'); return ouvrir(true);
+      }
+      const q = e.target.closest('[data-qty]');
+      if (q) {
+        const l = panier.find((x) => x.id === q.dataset.qty);
+        l.quantite = Math.max(0, Math.min(10, l.quantite + Number(q.dataset.d)));
+        panier = panier.filter((x) => x.quantite > 0); return save();
+      }
+      if (e.target.closest('[data-cart-open]')) return ouvrir(true);
+      if (e.target.closest('[data-cart-close]')) return ouvrir(false);
+      if (e.target.closest('[data-cart-pay]')) return payer(panier, e.target.closest('[data-cart-pay]'));
+    });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !cartEl.hidden) ouvrir(false); });
+    if (new URLSearchParams(location.search).get('paiement') === 'annule') toast('Paiement annulé : votre panier est conservé.');
+  }
+
+  /* ---------- Factures et devis consultables par lien (email, espace client) ---------- */
+  const frLong = (s) => new Date(`${s.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  // Mise en page commune : logo, émetteur, destinataire (avec ses coordonnées d'entreprise), lignes, totaux, mentions
+  const documentCommercial = (doc, e, { kicker, dates, statut, libelleClient, notes = '' }) => {
+    const taux = doc.taux_tva / 100;
+    const adresseClient = [doc.client_adresse, [doc.client_cp, doc.client_ville].filter(Boolean).join(' '), doc.client_pays].filter(Boolean).map(esc).join('<br>');
+    return `<header class="invoice-head">
+        <div><div class="invoice-logo"><img src="/assets/img/logo-mark.svg" alt="" width="40" height="40"><span class="logo-text">Renaissance<span>iTech</span></span></div>${/^renaissance\s*itech$/i.test((e.raison_sociale || '').trim()) ? '' : `<strong class="invoice-brand">${esc(e.raison_sociale)}</strong>`}<p>${esc(e.adresse).replace(/\n/g, '<br>')}</p>${e.siret ? `<p>SIRET ${esc(e.siret)}</p>` : ''}${e.tva_intracom ? `<p>TVA ${esc(e.tva_intracom)}</p>` : ''}</div>
+        <div class="invoice-meta"><span class="invoice-kicker">${esc(kicker)}</span><h1>${esc(doc.numero)}</h1>${dates.map((x) => `<p>${x}</p>`).join('')}${statut}</div>
+      </header>
+      <div class="invoice-client"><span>${esc(libelleClient)}</span><strong>${esc(doc.entreprise || doc.nom || '')}</strong>${doc.nom && doc.entreprise ? `<p>${esc(doc.nom)}</p>` : ''}${adresseClient ? `<p>${adresseClient}</p>` : ''}<p>${esc(doc.email)}</p>${doc.client_siret ? `<p>SIRET ${esc(doc.client_siret)}</p>` : ''}${doc.client_tva ? `<p>TVA ${esc(doc.client_tva)}</p>` : ''}</div>
+      <p class="invoice-objet"><strong>Objet :</strong> ${esc(doc.objet)}</p>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Désignation</th><th>Qté</th><th>Prix unitaire HT</th><th>Total HT</th></tr></thead><tbody>
+        ${doc.lignes.map((l) => `<tr><td>${esc(l.libelle)}</td><td>${+l.quantite}</td><td>${euros(l.prix_unitaire)}</td><td>${euros(l.quantite * l.prix_unitaire)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="invoice-totals"><div><span>Total HT</span><strong>${euros(doc.montant_ht)}</strong></div>
+        ${taux ? `<div><span>TVA ${String(taux).replace('.', ',')} %</span><strong>${euros(doc.montant_ttc - doc.montant_ht)}</strong></div>` : ''}
+        <div class="grand"><span>Total TTC</span><strong>${euros(doc.montant_ttc)}</strong></div></div>
+      ${!taux && e.mention_tva ? `<p class="invoice-note">${esc(e.mention_tva)}</p>` : ''}
+      ${notes}`;
+  };
+
+  const factureEl = $('[data-facture]');
+  if (factureEl) {
+    const t = new URLSearchParams(location.search).get('t') || '';
+    $('[data-print]')?.addEventListener('click', () => print());
+    fetch(`/api/facture?t=${encodeURIComponent(t)}`).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Facture introuvable.');
+      const { facture: f, emetteur: e } = d;
+      const statut = f.statut === 'payee' ? `<span class="status status-termine">Payée le ${frLong(f.payee_le)}</span>` : f.statut === 'annulee' ? '<span class="status status-annule">Annulée</span>' : `<span class="status status-nouveau">À régler avant le ${frLong(f.echeance)}</span>`;
+      factureEl.innerHTML = documentCommercial(f, e, {
+        kicker: f.type === 'acompte' ? 'Facture d’acompte' : 'Facture', libelleClient: 'Facturé à', statut,
+        dates: [`Émise le ${frLong(f.emise_le)}`, `Échéance : ${frLong(f.echeance)}`],
+        notes: `${e.iban && f.statut === 'a_payer' ? `<p class="invoice-note">Règlement par virement : IBAN ${esc(e.iban)}${e.bic ? ` · BIC ${esc(e.bic)}` : ''} · référence ${esc(f.numero)}</p>` : ''}
+          ${e.conditions ? `<p class="invoice-note">${esc(e.conditions)}</p>` : ''}`,
+      });
+      document.title = `Facture ${f.numero} | Renaissance iTech`;
+      $('[data-facture-actions]').hidden = false;
+      if (d.paiement) { const b = $('[data-facture-payer]'); b.hidden = false; b.href = `/api/paiement/facture?t=${encodeURIComponent(t)}`; b.textContent = `Payer ${euros(f.montant_ttc)} par carte`; }
+    }).catch((ex) => { factureEl.innerHTML = `<p class="form-msg err">${esc(ex.message)}</p>`; });
+  }
+
+  const devisEl = $('[data-devis]');
+  if (devisEl) {
+    const t = new URLSearchParams(location.search).get('t') || '';
+    $('[data-print]')?.addEventListener('click', () => print());
+    const zone = $('[data-devis-reponse]');
+    const afficher = async () => {
+      const r = await fetch(`/api/devis?t=${encodeURIComponent(t)}`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Devis introuvable.');
+      const { devis: v, emetteur: e } = d;
+      const accepte = () => `<span class="status status-termine">Accepté le ${frLong(v.accepte_le)} par ${esc(v.accepte_par)}</span>`;
+      const statut = ({
+        envoye: () => `<span class="status status-nouveau">Valable jusqu’au ${frLong(v.valide_jusqu)}</span>`,
+        accepte, facture: accepte,
+        refuse: () => '<span class="status status-annule">Refusé</span>', expire: () => '<span class="status status-annule">Expiré</span>', annule: () => '<span class="status status-annule">Annulé</span>',
+      }[v.statut] || (() => ''))();
+      devisEl.innerHTML = documentCommercial(v, e, {
+        kicker: 'Devis', libelleClient: 'Proposé à', statut,
+        dates: [`Émis le ${frLong(v.emis_le)}`, `Valable jusqu’au ${frLong(v.valide_jusqu)}`],
+        notes: `${v.acompte_pct ? `<p class="invoice-note"><strong>Acompte à la commande : ${+v.acompte_pct} %</strong>, soit ${euros(Math.round(v.montant_ttc * v.acompte_pct / 100))} TTC.</p>` : ''}
+          ${v.conditions ? `<p class="invoice-note">${esc(v.conditions)}</p>` : ''}
+          ${v.accepte_par ? `<p class="invoice-note sign">Bon pour accord · ${esc(v.accepte_par)} · ${frLong(v.accepte_le)}</p>` : ''}`,
+      });
+      document.title = `Devis ${v.numero} | Renaissance iTech`;
+      $('[data-devis-actions]').hidden = false;
+      if (v.statut === 'envoye') {
+        zone.hidden = false;
+        zone.innerHTML = `<h2>Votre réponse</h2>
+          <form class="form-grid" data-devis-accepter>
+            <div><label class="field-label" for="dv-nom">Vos nom et prénom</label><input class="input" id="dv-nom" name="nom" autocomplete="name" required value="${esc(v.nom || '')}"></div>
+            <label class="consent consent-light"><input type="checkbox" name="accord" required> Bon pour accord : j’accepte ce devis de ${euros(v.montant_ttc)} TTC et ses conditions${v.acompte_pct ? `, avec un acompte de ${+v.acompte_pct} %` : ''}.</label>
+            <p class="form-msg" data-devis-msg hidden></p>
+            <div class="devis-boutons"><button class="btn btn-primary" type="submit">Accepter le devis</button><button class="btn btn-outline" type="button" data-devis-refus>Refuser</button></div>
+          </form>`;
+      } else if (d.acompte && !d.acompte.payee) {
+        zone.hidden = false;
+        zone.innerHTML = `<h2>Acompte</h2><p>Votre facture d’acompte de <strong>${euros(d.acompte.montant_ttc)}</strong> est prête.</p><div class="devis-boutons"><a class="btn btn-primary" href="${esc(d.acompte.lien)}">Voir et régler l’acompte</a></div>`;
+      } else zone.hidden = true;
+    };
+    zone?.addEventListener('submit', async (ev) => {
+      const f = ev.target.closest('[data-devis-accepter]');
+      if (!f) return;
+      ev.preventDefault();
+      const msg = $('[data-devis-msg]', f);
+      const btn = $('button[type=submit]', f); btn.disabled = true;
+      try {
+        const r = await fetch('/api/devis/accepter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t, nom: f.nom.value, accord: f.accord.checked }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Une erreur est survenue.');
+        // Acompte : direction le paiement sécurisé, sans étape de plus
+        if (d.acompte?.paiement) { location.href = d.acompte.paiement; return; }
+        await afficher();
+        toast(d.message);
+      } catch (ex) { msg.hidden = false; msg.className = 'form-msg err'; msg.textContent = ex.message; btn.disabled = false; }
+    });
+    zone?.addEventListener('click', async (ev) => {
+      if (!ev.target.closest('[data-devis-refus]')) return;
+      const raison = prompt('Pouvez-vous nous dire pourquoi ? (facultatif : budget, délai, besoin…)', '');
+      if (raison === null) return;
+      const r = await fetch('/api/devis/refuser', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t, raison }) });
+      const d = await r.json().catch(() => ({}));
+      toast(d.message || d.error);
+      await afficher();
+    });
+    afficher().catch((ex) => { devisEl.innerHTML = `<p class="form-msg err">${esc(ex.message)}</p>`; });
+  }
+
+  /* ---------- Confirmation de paiement (retour de Stripe) ---------- */
+  const payEl = $('[data-paiement]');
+  if (payEl) {
+    const session = new URLSearchParams(location.search).get('session') || '';
+    const titre = $('[data-paiement-titre]'), texte = $('[data-paiement-texte]');
+    let essais = 0;
+    const verifier = async () => {
+      try {
+        const r = await fetch(`/api/paiement/statut?session=${encodeURIComponent(session)}`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        if (d.statut === 'payee') {
+          $('[data-paiement-eyebrow]').textContent = d.type === 'commande' ? `Commande ${d.reference}` : `Facture ${d.reference}`;
+          titre.textContent = 'Merci, votre paiement est confirmé';
+          texte.textContent = d.type === 'commande' ? 'Un email de confirmation et votre facture viennent de vous être envoyés. Nous vous contactons sous 24 h ouvrées pour planifier la prestation.' : 'Un reçu vient de vous être envoyé par email. Merci pour votre confiance.';
+          const recap = $('[data-paiement-recap]');
+          recap.innerHTML = `${(d.lignes || []).map((l) => `<div><span>${l.quantite} × ${esc(l.nom)}</span><strong>${euros(l.quantite * l.prix_ttc)}</strong></div>`).join('')}<div><span>Total payé</span><strong>${euros(d.montant)}</strong></div>`;
+          recap.hidden = false;
+          if (d.facture) { const b = $('[data-paiement-facture]'); b.href = d.facture; b.hidden = false; }
+          return;
+        }
+        if (++essais < 10) return setTimeout(verifier, 2000);
+        titre.textContent = 'Paiement en cours de confirmation';
+        texte.textContent = 'Votre banque n’a pas encore confirmé le paiement. Vous recevrez un email dès qu’il sera validé. Aucun nouveau paiement n’est nécessaire.';
+      } catch {
+        titre.textContent = 'Paiement introuvable';
+        texte.textContent = 'Si vous avez été débité, écrivez-nous à contact@renaissance-itech.com avec la date et le montant : nous vérifions immédiatement.';
+      }
+    };
+    if (new URLSearchParams(location.search).get('erreur')) { titre.textContent = 'Lien de paiement invalide'; texte.textContent = 'Ce lien de facture n’existe pas ou a expiré. Contactez-nous à contact@renaissance-itech.com.'; }
+    else verifier();
   }
 
 })();

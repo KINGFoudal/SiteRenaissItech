@@ -10,6 +10,10 @@
  * Espace client    GET /api/client/moi, POST /api/client/message, POST /api/client/profil
  * Administration   /api/admin/…
  * Assistant IA     POST /api/assistant
+ * Factures         /api/admin/factures…, /api/facture, /api/paiement/facture (voir worker/factures.js)
+ * Boutique         GET /api/boutique/catalogue, POST /api/boutique/commande, GET /api/paiement/statut
+ * Stripe           POST /api/stripe/webhook (STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET : secrets)
+ * Tâches planifiées : nettoyage RGPD chaque nuit, relances des factures impayées chaque matin
  *
  * Liaisons et variables (wrangler.jsonc) :
  *   DB (D1), AI (Workers AI), BREVO_API_KEY (secret), BREVO_LIST_ID, BREVO_DOI_TEMPLATE_ID,
@@ -27,6 +31,12 @@ import {
 import { purger } from './securite.js';
 import * as espaces from './espaces.js';
 import { assistant } from './assistant.js';
+import * as factures from './factures.js';
+import * as crm from './crm.js';
+import * as devis from './devis.js';
+import { paiementActif } from './stripe.js';
+
+const CRON_RELANCES = '12 7 * * *'; // 7 h 12 UTC : 9 h 12 l'été, 8 h 12 l'hiver à Paris
 
 const ROUTES = {
   'POST /api/contact': contact,
@@ -34,7 +44,7 @@ const ROUTES = {
   'POST /api/rendez-vous': rendezVous,
   'POST /api/newsletter': inscription,
   'POST /api/newsletter/desinscription': desinscription,
-  'GET /api/config': (request, env) => json({ turnstile: env.TURNSTILE_SITE_KEY || null }),
+  'GET /api/config': (request, env) => json({ turnstile: env.TURNSTILE_SITE_KEY || null, paiement: paiementActif(env) }),
   'POST /api/auth/connexion': connexion,
   'POST /api/auth/2fa': deuxFacteurs,
   'POST /api/auth/totp/initier': totpInitier,
@@ -58,17 +68,48 @@ const ROUTES = {
   'POST /api/admin/message': espaces.adminMessage,
   'GET /api/admin/demandes': espaces.adminDemandes,
   'POST /api/admin/demande/traiter': espaces.adminDemandeTraiter,
-  'GET /api/admin/clients': espaces.adminClients,
+  'GET /api/admin/clients': crm.adminContacts,
+  'GET /api/admin/crm/fiche': crm.adminFiche,
+  'POST /api/admin/crm/contact': crm.adminContactSave,
+  'POST /api/admin/crm/note': crm.adminNote,
+  'GET /api/admin/crm/pipeline': crm.adminPipeline,
+  'POST /api/admin/crm/opportunite': crm.adminOpportunite,
+  'GET /api/admin/crm/taches': crm.adminTaches,
+  'POST /api/admin/crm/tache': crm.adminTache,
+  'GET /api/admin/crm/export': crm.adminExport,
+  'GET /api/admin/crm/entreprises': crm.adminEntreprises,
+  'GET /api/admin/crm/entreprise': crm.adminEntreprise,
+  'POST /api/admin/crm/entreprise': crm.adminEntrepriseSave,
+  'GET /api/admin/devis': devis.adminDevis,
+  'POST /api/admin/devis/creer': devis.adminDevisCreer,
+  'POST /api/admin/devis/action': devis.adminDevisAction,
+  'GET /api/devis': devis.devisVoir,
+  'POST /api/devis/accepter': devis.devisAccepter,
+  'POST /api/devis/refuser': devis.devisRefuser,
   'POST /api/admin/client/creer': espaces.adminClientCreer,
   'POST /api/admin/client/acces': espaces.adminClientAcces,
   'GET /api/admin/assistant': espaces.adminAssistant,
   'GET /api/admin/journal': espaces.adminJournal,
   'POST /api/assistant': assistant,
+  'GET /api/admin/factures': factures.adminFactures,
+  'POST /api/admin/facture/creer': factures.adminFactureCreer,
+  'POST /api/admin/facture/action': factures.adminFactureAction,
+  'POST /api/admin/facturation': factures.adminFacturation,
+  'GET /api/admin/boutique': factures.adminBoutique,
+  'POST /api/admin/produit': factures.adminProduit,
+  'GET /api/facture': factures.factureVoir,
+  'GET /api/paiement/facture': factures.facturePayer,
+  'GET /api/paiement/statut': factures.statutPaiement,
+  'GET /api/boutique/catalogue': factures.catalogue,
+  'POST /api/boutique/commande': factures.commander,
+  'POST /api/stripe/webhook': factures.webhook,
 };
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(purger(env));
+    // Deux déclencheurs (wrangler.jsonc) : la nuit pour le nettoyage, le matin pour les relances de factures
+    if (event.cron === CRON_RELANCES) ctx.waitUntil(Promise.all([factures.relances(env), crm.rappelTaches(env), devis.expirerDevis(env)]));
+    else ctx.waitUntil(purger(env));
   },
 
   async fetch(request, env, ctx) {

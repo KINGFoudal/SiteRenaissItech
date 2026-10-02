@@ -111,9 +111,30 @@ export const emailButton = (href, label) => `<p style="margin:24px 0"><a href="$
 
 export const emailTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:8px 0;color:#666;width:130px;vertical-align:top">${esc(k)}</td><td style="padding:8px 0">${esc(v).replace(/\n/g, '<br>')}</td></tr>`).join('')}</table>`;
 
+// Version texte de l'email : les messageries se méfient des emails sans version texte (filtre anti-spam)
+export function htmlVersTexte(html) {
+  const entites = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ', rsquo: '’' };
+  return String(html)
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => `${label} : ${href}`)
+    .replace(/<\/td>\s*<td[^>]*>/gi, ' : ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h\d|tr|li|table)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(amp|lt|gt|quot|#39|nbsp|rsquo);/g, (_, e) => entites[e])
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // N'échoue jamais : les données sont déjà enregistrées en base
-export async function sendEmail(env, { to, subject, html, replyTo, attachment }) {
-  if (!env.BREVO_API_KEY) return false;
+export async function sendEmail(env, message) {
+  return (await envoyerEmail(env, message)).ok;
+}
+
+// Variante qui explique l'échec (affichée à l'administrateur, jamais au visiteur)
+export async function envoyerEmail(env, { to, subject, html, replyTo, attachment }) {
+  if (!env.BREVO_API_KEY) return { ok: false, erreur: 'clé BREVO_API_KEY absente de la configuration' };
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -123,15 +144,20 @@ export async function sendEmail(env, { to, subject, html, replyTo, attachment })
         to: [{ email: to }],
         subject,
         htmlContent: html,
+        textContent: htmlVersTexte(html),
         ...(replyTo ? { replyTo: { email: replyTo } } : {}),
         ...(attachment ? { attachment: [attachment] } : {}),
       }),
     });
-    if (!res.ok) console.error('Brevo email', res.status, await res.text());
-    return res.ok;
+    if (res.ok) return { ok: true };
+    const texte = await res.text();
+    console.error('Brevo email', res.status, texte);
+    let detail = texte;
+    try { detail = JSON.parse(texte).message || texte; } catch { /* réponse non JSON */ }
+    return { ok: false, erreur: `Brevo ${res.status} : ${String(detail).slice(0, 200)}` };
   } catch (e) {
     console.error('Brevo email', e);
-    return false;
+    return { ok: false, erreur: 'Brevo injoignable' };
   }
 }
 

@@ -4,9 +4,13 @@ import {
   HttpError, json, clean, readJson, EMAIL_RE, esc, emailLayout, emailButton, emailTable,
   sendEmail, notifyEmail, siteUrl, upsertClient,
 } from './lib.js';
+import { resumeCrm, lierEntreprise } from './crm.js';
+import { devisClient } from './devis.js';
 import { requireSession, motDePasseProvisoire, hacherMotDePasse, fermerSessions, PROVISOIRE_JOURS } from './auth.js';
 import { SERVICES } from './formulaires.js';
 import { journal } from './securite.js';
+import { facturesClient } from './factures.js';
+import { paiementActif } from './stripe.js';
 
 const STATUTS_PROJET = ['nouveau', 'en_cours', 'en_pause', 'termine', 'annule'];
 const STATUTS_RDV = ['confirme', 'annule', 'termine'];
@@ -33,7 +37,9 @@ export async function clientMoi(request, env) {
   // Les messages de l'équipe sont marqués comme lus à l'ouverture de l'espace
   await env.DB.prepare("UPDATE messages SET lu = 1 WHERE auteur = 'equipe' AND projet_id IN (SELECT id FROM projets WHERE client_id = ?)").bind(client.id).run();
 
-  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0 });
+  const factures = await facturesClient(env, client.id);
+  const devis = await devisClient(env, client.id);
+  return json({ client, projets, rendez_vous: rdv, non_lus: nonLus?.n || 0, factures, devis, paiement: paiementActif(env) });
 }
 
 export async function clientMessage(request, env, ctx) {
@@ -59,8 +65,10 @@ export async function clientMessage(request, env, ctx) {
 export async function clientProfil(request, env) {
   const s = await requireSession(request, env, 'client');
   const data = await readJson(request);
-  await env.DB.prepare('UPDATE clients SET nom = ?, telephone = ?, entreprise = ? WHERE email = ?')
-    .bind(clean(data.nom, 100) || null, clean(data.telephone, 30) || null, clean(data.entreprise, 120) || null, s.email).run();
+  await env.DB.prepare('UPDATE clients SET nom = ?, telephone = ? WHERE email = ?')
+    .bind(clean(data.nom, 100) || null, clean(data.telephone, 30) || null, s.email).run();
+  const moi = await env.DB.prepare('SELECT id FROM clients WHERE email = ?').bind(s.email).first();
+  if (moi) await lierEntreprise(env, moi.id, data.entreprise);
   return json({ ok: true, message: 'Vos informations sont enregistrées.' });
 }
 
@@ -86,7 +94,50 @@ export async function adminResume(request, env) {
     moi: session.email,
     kpis: { rdv_a_venir: rdvAVenir.n, demandes_a_traiter: demandes.n, projets_actifs: projetsActifs.n, clients: clients.n, questions_assistant_7j: questions.n },
     prochains_rdv: prochains, demandes: dernieresDemandes, messages: derniersMessages,
+    ...(await resumeFinances(env)),
+    ...(await resumeCrm(env)),
   });
+}
+
+// Chiffres, activité récente et priorités du tableau de bord (factures, paiements, boutique)
+async function resumeFinances(env) {
+  const one = (sql) => env.DB.prepare(sql).first();
+  const all = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
+  try {
+    const [mois, moisPrec, aPayer, retard, boutique, serie, retards, topClients, activite] = await Promise.all([
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month')"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month', '-1 month') AND payee_le < date('now', 'start of month')"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'a_payer'"),
+      one("SELECT COALESCE(SUM(montant_ttc), 0) AS total, COUNT(*) AS n FROM factures WHERE statut = 'a_payer' AND echeance < date('now')"),
+      one("SELECT COUNT(*) AS n, COALESCE(SUM(montant_ttc), 0) AS total FROM commandes WHERE statut = 'payee' AND payee_le >= date('now', 'start of month')"),
+      all("SELECT strftime('%Y-%m', payee_le) AS mois, SUM(montant_ttc) AS total FROM factures WHERE statut = 'payee' AND payee_le >= date('now', 'start of month', '-11 months') GROUP BY mois ORDER BY mois"),
+      all("SELECT f.id, f.numero, f.montant_ttc, f.echeance, CAST(julianday('now') - julianday(f.echeance) AS INTEGER) AS retard, c.nom, c.entreprise, c.email FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'a_payer' AND f.echeance < date('now') ORDER BY f.echeance LIMIT 5"),
+      all("SELECT c.nom, c.entreprise, c.email, SUM(f.montant_ttc) AS total, COUNT(*) AS n FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'payee' AND f.payee_le >= date('now', 'start of year') GROUP BY c.id ORDER BY total DESC LIMIT 5"),
+      // D1 limite les UNION : une requête par type d'événement, fusionnées ci-dessous
+      Promise.all([
+        "SELECT 'paiement' AS type, f.payee_le AS quand, f.numero AS ref, f.montant_ttc AS montant, COALESCE(c.entreprise, c.nom, c.email) AS qui, f.mode_paiement AS detail, 'factures' AS lien FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.statut = 'payee' AND f.payee_le IS NOT NULL AND f.commande_id IS NULL ORDER BY f.payee_le DESC LIMIT 12",
+        "SELECT 'facture' AS type, f.cree_le AS quand, f.numero AS ref, f.montant_ttc AS montant, COALESCE(c.entreprise, c.nom, c.email) AS qui, f.objet AS detail, 'factures' AS lien FROM factures f JOIN clients c ON c.id = f.client_id WHERE f.commande_id IS NULL ORDER BY f.id DESC LIMIT 12",
+        "SELECT 'commande' AS type, payee_le AS quand, reference AS ref, montant_ttc AS montant, email AS qui, NULL AS detail, 'boutique' AS lien FROM commandes WHERE statut = 'payee' ORDER BY payee_le DESC LIMIT 12",
+        "SELECT 'relance' AS type, r.cree_le AS quand, f.numero AS ref, f.montant_ttc AS montant, r.email AS qui, NULL AS detail, 'factures' AS lien FROM relances r JOIN factures f ON f.id = r.facture_id WHERE r.envoye = 1 ORDER BY r.id DESC LIMIT 12",
+        "SELECT 'rdv' AS type, cree_le AS quand, service AS ref, NULL AS montant, nom AS qui, date || ' ' || heure AS detail, 'rdv' AS lien FROM rendez_vous ORDER BY id DESC LIMIT 12",
+        "SELECT 'demande' AS type, cree_le AS quand, sujet AS ref, NULL AS montant, nom AS qui, NULL AS detail, 'demandes' AS lien FROM contacts ORDER BY id DESC LIMIT 12",
+        "SELECT 'message' AS type, m.cree_le AS quand, p.titre AS ref, NULL AS montant, COALESCE(c.nom, c.email) AS qui, NULL AS detail, 'projets' AS lien FROM messages m JOIN projets p ON p.id = m.projet_id JOIN clients c ON c.id = p.client_id WHERE m.auteur = 'client' ORDER BY m.id DESC LIMIT 12",
+        "SELECT 'client' AS type, cree_le AS quand, NULL AS ref, NULL AS montant, COALESCE(entreprise, nom, email) AS qui, NULL AS detail, 'clients' AS lien FROM clients ORDER BY id DESC LIMIT 12",
+      ].map(all)).then((listes) => listes.flat().filter((a) => a.quand).sort((a, b) => (a.quand < b.quand ? 1 : -1)).slice(0, 12)),
+    ]);
+    return {
+      finances: {
+        encaisse_mois: mois.total, factures_payees_mois: mois.n, encaisse_mois_prec: moisPrec.total,
+        a_encaisser: aPayer.total, factures_a_payer: aPayer.n, en_retard: retard.total, factures_en_retard: retard.n,
+        commandes_mois: boutique.n, boutique_mois: boutique.total,
+      },
+      serie_encaissements: serie, factures_en_retard: retards, top_clients: topClients, activite,
+    };
+  } catch (e) {
+    // Base pas encore migrée (tables factures absentes) : le tableau de bord reste utilisable
+    console.error('Tableau de bord finances', e);
+    return {};
+  }
 }
 
 export async function adminRendezVous(request, env) {
@@ -189,16 +240,6 @@ export async function adminDemandeTraiter(request, env) {
   return json({ ok: true });
 }
 
-export async function adminClients(request, env) {
-  await requireSession(request, env, 'admin');
-  const { results } = await env.DB.prepare(`SELECT c.id, c.email, c.nom, c.telephone, c.entreprise, c.cree_le, c.derniere_connexion,
-      c.acces_premium, c.doit_changer_mdp, c.acces_cree_le, c.mdp_maj_le,
-      (SELECT COUNT(*) FROM projets p WHERE p.client_id = c.id) AS nb_projets,
-      (SELECT COUNT(*) FROM rendez_vous r WHERE r.email = c.email) AS nb_rdv
-    FROM clients c ORDER BY c.acces_premium DESC, c.id DESC LIMIT 300`).all();
-  return json({ clients: results });
-}
-
 export async function adminAssistant(request, env) {
   await requireSession(request, env, 'admin');
   const { results } = await env.DB.prepare('SELECT id, conversation, question, reponse, page, cree_le FROM assistant_messages ORDER BY id DESC LIMIT 200').all();
@@ -244,7 +285,8 @@ export async function adminClientCreer(request, env, ctx) {
   const existant = await env.DB.prepare('SELECT acces_premium FROM clients WHERE email = ?').bind(email).first();
   if (existant?.acces_premium) throw new HttpError(409, 'Ce client a déjà un accès. Utilisez « Nouveau mot de passe provisoire » dans la liste.');
   await upsertClient(env, { email, nom: clean(data.nom, 100), telephone: clean(data.telephone, 30) });
-  if (clean(data.entreprise, 120)) await env.DB.prepare('UPDATE clients SET entreprise = COALESCE(entreprise, ?) WHERE email = ?').bind(clean(data.entreprise, 120), email).run();
+  const fiche = await env.DB.prepare('SELECT id, entreprise_id FROM clients WHERE email = ?').bind(email).first();
+  if (clean(data.entreprise, 120) && !fiche.entreprise_id) await lierEntreprise(env, fiche.id, data.entreprise);
   const provisoire = await donnerAcces(env, email);
   const envoye = data.envoyer_email !== false && await emailIdentifiants(env, request, { email, nom: clean(data.nom, 100), provisoire, nouveau: true });
   await journal(env, request, session.email, 'Accès premium créé', email, envoye ? 'identifiants envoyés par email' : 'identifiants non envoyés');

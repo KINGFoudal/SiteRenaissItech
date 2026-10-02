@@ -5,10 +5,12 @@
   "scripts": {
     "build": "node scripts/build-blog.mjs && node scripts/version-assets.mjs",
     "check": "node scripts/build-blog.mjs --check",
-    "dev": "npx serve ."
+    "dev": "npx serve .",
+    "test": "node --test --test-concurrency=1 \"tests/*.test.mjs\""
   },
   "devDependencies": {
     "js-yaml": "^4.1.0",
-    "marked": "^15.0.0"
+    "marked": "^15.0.0",
+    "wrangler": "^4.143.0"
   }
 }
