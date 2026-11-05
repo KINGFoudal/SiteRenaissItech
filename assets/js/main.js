@@ -44,7 +44,7 @@
     bar.addEventListener('click', (e) => {
       const btn = e.target.closest('.pill');
       if (!btn) return;
-      $$('.pill', bar).forEach((p) => p.classList.toggle('is-active', p === btn));
+      $$('.pill', bar).forEach((p) => { p.classList.toggle('is-active', p === btn); p.setAttribute('aria-pressed', String(p === btn)); });
       cat = btn.dataset.cat;
       apply();
     });
@@ -301,7 +301,7 @@
     const widget = document.createElement('div');
     widget.className = 'assistant';
     widget.innerHTML = `
-      <button class="assistant-fab" type="button" aria-expanded="false" aria-controls="assistant-panel" data-assistant-toggle>
+      <button class="assistant-fab" type="button" aria-label="Une question ? Ouvrir l’assistant" aria-expanded="false" aria-controls="assistant-panel" data-assistant-toggle>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9h8M8 13h5"/></svg>
         <span>Une question ?</span>
       </button>

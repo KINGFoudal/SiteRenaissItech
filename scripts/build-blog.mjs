@@ -339,9 +339,9 @@ function listingPage(articles) {
         </div>
       </article>` : ''}
 
-      <div class="pills" role="tablist" data-filter=".posts .post, .featured">
-        <button class="pill is-active" type="button" data-cat="all">Tous</button>
-        ${cats.map(([l, k]) => `<button class="pill" type="button" data-cat="${k}">${esc(l)}</button>`).join('\n        ')}
+      <div class="pills" role="group" aria-label="Filtrer par catégorie" data-filter=".posts .post, .featured">
+        <button class="pill is-active" type="button" aria-pressed="true" data-cat="all">Tous</button>
+        ${cats.map(([l, k]) => `<button class="pill" type="button" aria-pressed="false" data-cat="${k}">${esc(l)}</button>`).join('\n        ')}
       </div>
       <div class="posts">
         ${rest.map(card).join('\n        ')}
