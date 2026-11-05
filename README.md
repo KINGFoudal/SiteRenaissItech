@@ -8,6 +8,7 @@ Site de Renaissance iTech (HTML/CSS/JS sans framework) servi par un Worker Cloud
 | Services (7 services) | `services.html` |
 | Formations IA en entreprise | `formations.html` |
 | Boutique (offres, sans prix) | `boutique.html` |
+| Pages d’offre (7) | `offre-*.html` (générées depuis `content/offres.json`) |
 | Blog | `blog.html` (généré) + `blog/<article>/` |
 | À propos | `a-propos.html` |
 | Rendez-vous / confirmation | `rendez-vous.html`, `rendez-vous-confirme.html` |
@@ -22,6 +23,8 @@ Styles : `assets/css/style.css` · Scripts : `assets/js/main.js` · Visuels : `a
 Aperçu local : `npm install && npm run build && npm run dev` (pages seules) ou `npx wrangler dev` (pages + formulaires)
 
 - **Checklist de validation** : [CHECKLIST-VALIDATION.md](CHECKLIST-VALIDATION.md)
+
+- **Pages d’offre et prix** : modifier `content/offres.json` (`"prix": null` = « Sur devis », `"prix": 890` = « À partir de 890 € HT »), puis `npm run build` ; sur GitHub, le workflow « Publier le blog » régénère les pages
 
 - **Publier un article** : voir [PUBLIER-UN-ARTICLE.md](PUBLIER-UN-ARTICLE.md) (articles dans `content/blog/`, générés par `scripts/build-blog.mjs`)
 - **Formulaires, emails et newsletter** : voir [NEWSLETTER.md](NEWSLETTER.md) (Worker `worker/index.js`, base D1 `migrations/`, Brevo)

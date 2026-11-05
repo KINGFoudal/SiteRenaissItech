@@ -40,6 +40,8 @@ const CTA = {
 };
 
 const PAGES = ['index.html', 'services.html', 'formations.html', 'rendez-vous.html', 'boutique.html', 'blog.html', 'contact.html', 'a-propos.html', 'mentions-legales.html', 'cookies.html', 'plan-du-site.html'];
+// Pages d’offre générées par scripts/build-offres.mjs
+const OFFRES = JSON.parse(readFileSync(join(ROOT, 'content/offres.json'), 'utf8')).offres.map((o) => `${o.slug}.html`);
 
 /* ---------------------------------------------------------------- utilitaires */
 
@@ -511,7 +513,7 @@ ${items}
 
 function sitemap(articles) {
   const urls = [
-    ...PAGES.map((p) => ({ loc: p === 'index.html' ? `${SITE}/` : `${SITE}/${p.replace(/\.html$/, '')}` })),
+    ...[...PAGES, ...OFFRES].map((p) => ({ loc: p === 'index.html' ? `${SITE}/` : `${SITE}/${p.replace(/\.html$/, '')}` })),
     ...articles.map((a) => ({ loc: `${SITE}/blog/${a.slug}/`, lastmod: isoDate(a.updated || a.date) })),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>
