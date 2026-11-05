@@ -125,6 +125,8 @@ ul { margin: 0; padding: 0; list-style: none; }
     radial-gradient(ellipse 25% 30% at 92% 15%, rgba(255, 107, 26, .12), transparent 70%);
 }
 .hero-block > * { position: relative; }
+/* Texte noir sur l’orange vif du hero : 6,9:1 (le blanc ne donnait que 2,85:1) */
+.hero-block .btn-primary { color: var(--black); }
 .hero .container { position: relative; }
 .hero-grid { display: grid; grid-template-columns: 1fr 1.2fr; align-items: center; gap: 36px; }
 .hero-badge { display: inline-flex; align-items: center; height: 30px; padding: 0 14px; border-radius: 4px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .1); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -471,7 +473,7 @@ small.muted { display: inline-block; font-size: 12.5px; }
 .post-body h3 { flex: 0; }
 .post-excerpt { margin-top: 10px; font-size: 14px; color: var(--muted); flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .post-author { display: inline-flex; align-items: center; gap: 8px; }
-.author-dot { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--black); color: var(--orange); font-size: 11px; font-weight: 800; flex-shrink: 0; }
+.author-dot { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--black); color: #FF6B1A; font-size: 11px; font-weight: 800; flex-shrink: 0; }
 .center-link .link-arrow svg { width: 15px; height: 15px; }
 .center-link .link-arrow:has(svg)::after { content: none; }
 
@@ -789,7 +791,8 @@ small.muted { display: inline-block; font-size: 12.5px; }
 .svc-tab .service-icon { display: block; width: 34px; height: 34px; flex-shrink: 0; }
 .svc-tab strong { display: block; font-size: 15px; font-weight: 600; }
 .svc-tab small { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
-.svc-explorer:hover .svc-tab:not(:hover), .svc:not(.is-active) .svc-tab { opacity: .55; }
+/* Seule l’icône s’estompe : le texte des onglets inactifs garde un contraste AA */
+.svc-explorer:hover .svc-tab:not(:hover) .service-icon, .svc:not(.is-active) .svc-tab .service-icon { opacity: .55; }
 .svc.is-active .svc-tab { opacity: 1; border-color: var(--orange); background: var(--orange-soft); transform: translateX(4px); }
 .svc-detail { grid-column: 2; grid-row: 1 / span 8; display: none; padding: 36px 40px; animation: aiIn .35s var(--ease) both; position: sticky; top: 96px; }
 .svc.is-active .svc-detail { display: block; }
@@ -808,7 +811,7 @@ small.muted { display: inline-block; font-size: 12.5px; }
   .svc-detail > .service-icon, .svc-detail h2 { display: none; }
   .svc-detail > p { margin-top: 0; }
   .svc.is-active .svc-tab { transform: none; }
-  .svc-explorer:hover .svc-tab:not(:hover) { opacity: .55; }
+  .svc-explorer:hover .svc-tab:not(:hover) .service-icon { opacity: .55; }
 }
 
 /* ---------- Blocs de contenu (formations, à propos, boutique) ---------- */

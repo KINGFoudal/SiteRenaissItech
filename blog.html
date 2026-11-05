@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=6fcd52c758">
+  <link rel="stylesheet" href="/assets/css/style.css?v=4b7ae1d66c">
 </head>
 <body>
   <header class="site-header">
@@ -74,13 +74,13 @@
         </div>
       </article>
 
-      <div class="pills" role="tablist" data-filter=".posts .post, .featured">
-        <button class="pill is-active" type="button" data-cat="all">Tous</button>
-        <button class="pill" type="button" data-cat="ia">IA</button>
-        <button class="pill" type="button" data-cat="web">Développement Web</button>
-        <button class="pill" type="button" data-cat="entrepreneuriat">Entrepreneuriat</button>
-        <button class="pill" type="button" data-cat="cyber">Cybersécurité</button>
-        <button class="pill" type="button" data-cat="design">Design</button>
+      <div class="pills" role="group" aria-label="Filtrer par catégorie" data-filter=".posts .post, .featured">
+        <button class="pill is-active" type="button" aria-pressed="true" data-cat="all">Tous</button>
+        <button class="pill" type="button" aria-pressed="false" data-cat="ia">IA</button>
+        <button class="pill" type="button" aria-pressed="false" data-cat="web">Développement Web</button>
+        <button class="pill" type="button" aria-pressed="false" data-cat="entrepreneuriat">Entrepreneuriat</button>
+        <button class="pill" type="button" aria-pressed="false" data-cat="cyber">Cybersécurité</button>
+        <button class="pill" type="button" aria-pressed="false" data-cat="design">Design</button>
       </div>
       <div class="posts">
         <article class="card post" data-cat="cyber" data-search="5 bonnes pratiques pour sécuriser votre site web mises à jour, https, mots de passe, sauvegardes, surveillance : les 5 réflexes essentiels pour protéger votre site et les données de vos clients. cybersécurité sécurité site web bonnes pratiques">
@@ -164,6 +164,6 @@
     </div>
   </footer>
   <div class="toast" role="status" aria-live="polite" data-toast></div>
-  <script src="/assets/js/main.js?v=aca9561450" defer></script>
+  <script src="/assets/js/main.js?v=521d17d11f" defer></script>
 </body>
 </html>
