@@ -1009,6 +1009,21 @@ body.no-scroll { overflow: hidden; }
   .invoice-meta { text-align: left; }
   .cart-fab { left: 16px; bottom: 16px; }
 }
+/* Pages d’offre (offre-*.html, générées par scripts/build-offres.mjs) */
+.offer-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; margin-top: 8px; }
+.offer-visual { border-radius: 12px; overflow: hidden; background: var(--black); aspect-ratio: 16 / 11; }
+.offer-visual img { width: 100%; height: 100%; object-fit: cover; }
+.offer-price { display: inline-grid; gap: 2px; margin-top: 24px; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); }
+.offer-price span { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.offer-price strong { font-size: 22px; font-weight: 700; color: var(--text); }
+.offer-price small { font-size: 13px; color: var(--muted); }
+.offer-hero .hero-ctas { margin-top: 24px; }
+.offer-list { margin-top: 20px; max-width: 760px; }
+.offer-more { margin-top: 18px; }
+.product-body h3 a { color: inherit; }
+.product-body h3 a:hover { color: var(--orange); }
+@media (max-width: 920px) { .offer-hero { grid-template-columns: 1fr; } .offer-visual { max-width: 520px; } }
+
 @media print {
   .site-header, .site-footer, .no-print, .assistant, .assistant-fab, .toast { display: none !important; }
   .page { padding: 0; }

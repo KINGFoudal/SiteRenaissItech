@@ -7,6 +7,30 @@
     <description>Conseils, actualités et tendances : IA, développement web, cybersécurité et entrepreneuriat.</description>
     <language>fr-FR</language>
     <item>
+      <title>AI Act : ce qui s'applique vraiment aux PME fin 2026</title>
+      <link>https://www.renaissance-itech.com/blog/ai-act-pme-2026/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/ai-act-pme-2026/</guid>
+      <pubDate>Thu, 05 Nov 2026 00:00:00 GMT</pubDate>
+      <category>IA</category>
+      <description>Omnibus IA, report du haut risque à 2027, transparence depuis août 2026 : le point sur les obligations de l'AI Act pour une PME qui utilise l'IA.</description>
+    </item>
+    <item>
+      <title>IA générative et RGPD : les recommandations de la CNIL</title>
+      <link>https://www.renaissance-itech.com/blog/ia-generative-rgpd-cnil-pme/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/ia-generative-rgpd-cnil-pme/</guid>
+      <pubDate>Wed, 04 Nov 2026 00:00:00 GMT</pubDate>
+      <category>IA</category>
+      <description>Sur site ou en cloud, données dans les prompts, charte, formation, AIPD : ce que la CNIL recommande aux entreprises qui déploient une IA générative.</description>
+    </item>
+    <item>
+      <title>Shadow AI : sécuriser l'IA générative en entreprise</title>
+      <link>https://www.renaissance-itech.com/blog/shadow-ai-securiser-ia-generative/</link>
+      <guid isPermaLink="true">https://www.renaissance-itech.com/blog/shadow-ai-securiser-ia-generative/</guid>
+      <pubDate>Tue, 03 Nov 2026 00:00:00 GMT</pubDate>
+      <category>Cybersécurité</category>
+      <description>Outils d'IA utilisés sans validation, injection de consignes, droits d'accès : les recommandations de l'ANSSI pour sécuriser l'IA générative en PME.</description>
+    </item>
+    <item>
       <title>Comment l'IA transforme les entreprises en 2026</title>
       <link>https://www.renaissance-itech.com/blog/comment-ia-transforme-les-entreprises/</link>
       <guid isPermaLink="true">https://www.renaissance-itech.com/blog/comment-ia-transforme-les-entreprises/</guid>
